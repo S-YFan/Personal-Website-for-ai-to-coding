@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>About Sheng-Yang Fan - Academic Portfolio</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">Sheng-Yang Fan</a>
+            <ul class="nav-menu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="about.html" class="active">About</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+        <section id="about" class="hero section">
+            <div class="container">
+                <header class="hero-header">
+                    <h1 class="name">范聖揚 (Sheng-Yang Fan)</h1>
+                    <h2 class="title">光電工程學系學生 | 國立中山大學</h2>
+                    <p class="summary">專注於光學模擬、時間調制環形共振腔與數值運算，具備扎實的光電物理理論基礎與實務模擬經驗。</p>
+                    <div class="contact-links">
+                        <a href="mailto:sheng58270@gmail.com" class="contact-btn" aria-label="Email">Email: sheng58270@gmail.com</a>
+                        <a href="https://github.com" class="contact-btn" target="_blank" rel="noopener noreferrer">GitHub</a>
+                        <span class="contact-info">Tel: (+886) 903-822-078</span>
+                    </div>
+                </header>
+            </div>
+        </section>
+
+        <section id="education" class="section">
+            <div class="container">
+                <h2 class="section-title">EDUCATION ｜ 學歷</h2>
+                <div class="card education-card">
+                    <div class="card-header">
+                        <h3 class="institution">國立中山大學 (National Sun Yat-sen University)</h3>
+                        <span class="location">高雄，臺灣</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="major">光電工程學系</div>
+                        <div class="period">2023.09 -- 2027.06 (預計畢業)</div>
+                        <ul class="achievements">
+                            <li><strong>班排:</strong> 1 / 53（前 1.89%）</li>
+                            <li><strong>系排:</strong> 2 / 74（前 2.70%）</li>
+                            <li><strong>GPA:</strong> 4.06 / 4.3</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="research" class="section">
+            <div class="container">
+                <h2 class="section-title">RESEARCH & PROJECTS ｜ 研究與專題</h2>
+
+                <article class="card project-card">
+                    <div class="card-header">
+                        <h3 class="project-title">時間調制環形共振腔之多模耦合與動態頻譜</h3>
+                        <span class="period">2025.07 -- 至今</span>
+                    </div>
+                    <div class="project-role">專題研究 ｜ 指導教授：王耀霆 博士</div>
+                    <ul class="project-details">
+                        <li><strong>物理理論建模：</strong>推導純相位調變微環共振腔之 Temporal Coupled-Mode Theory (TCMT) 微分方程式；以二次量子化形式簡化光子躍遷項並保留最近鄰耦合，將多模態系統等效為合成維度緊束縛模型。</li>
+                        <li><strong>數值模擬計算：</strong>採用絕熱近似建立穩態聯立微分方程式，使用 MATLAB 求解動態調變下之穿透頻譜與整體能帶結構。</li>
+                        <li><strong>實驗架設與能帶驗證：</strong>於光學桌架設光纖環形共振腔系統；量測共振腔穿透頻譜以直接觀測能帶結構特徵，完成理論數值模型與實際光纖系統之相互驗證。</li>
+                    </ul>
+                </article>
+
+                <article class="card project-card">
+                    <div class="card-header">
+                        <h3 class="project-title">100 Gbps PAM-4 光調變優化與色散通道效應分析</h3>
+                        <span class="period">2025.09 -- 2025.12</span>
+                    </div>
+                    <div class="project-role">課程專題: 光纖通信導論 ｜ Python (NumPy, SciPy, Matplotlib)</div>
+                    <ul class="project-details">
+                        <li><strong>調變非線性補償：</strong>透過預失真映射校正 SD-MZM 正弦響應，平衡各階 Inner OMA 以合成均勻 100 Gbps PAM-4 光訊號。</li>
+                        <li><strong>色散通道與統計評估：</strong>以 Python 模擬包含二階色散與接收端低通濾波之傳輸系統，實作 CDR 動態取樣決策，量化眼圖表現與 Q-factor 劣化趨勢。</li>
+                    </ul>
+                </article>
+
+                <article class="card project-card">
+                    <div class="card-header">
+                        <h3 class="project-title">積體光路偏振分束器（PBS）光場演化與物理機制分析</h3>
+                        <span class="period">2025.09 -- 2025.12</span>
+                    </div>
+                    <div class="project-role">課程專題: 積體光電元件原理與設計 ｜ RSoft (BPM, FullWAVE 2D-FDTD)</div>
+                    <ul class="project-details">
+                        <li><strong>傳統導波分束器評估：</strong>透過 BPM 與 FDTD 數值模擬對比 MMI、DC、MZI 及 MRR 四種 PBS 機制，分析模態拍長、漸逝波耦合與干涉條件，評估各元件之消光比、損耗與頻譜容差表現。</li>
+                        <li><strong>光子晶體微型化設計：</strong>模擬 2D 正方晶格光子晶體 MMI 結構，利用結構高色散特性在微型腔體內實現自成像模態分離，並完成介質柱半徑之製程容差分析。</li>
+                    </ul>
+                </article>
+            </div>
+        </section>
+
+        <section id="honors" class="section bg-light">
+            <div class="container grid-2">
+                <div class="column">
+                    <h2 class="section-title">HONORS & GRANTS ｜ 榮譽與計畫</h2>
+                    <ul class="list-styled">
+                        <li>
+                            <strong>國立中山大學書香獎 (Academic Excellence Award)</strong><br>
+                            <span class="text-muted">112-1, 113-1, 114-1 學期</span>
+                        </li>
+                        <li>
+                            <strong>國立中山大學鼓勵大學部學生參與專題研究計畫</strong><br>
+                            <span class="text-muted">2026.07 -- 2027.02</span>
+                        </li>
+                    </ul>
+
+                    <h2 class="section-title mt-4">EXPERIENCE & LANGUAGES</h2>
+                    <ul class="list-styled">
+                        <li>
+                            <strong>課程教學助理 (TA):</strong> 中文思辨與表達 <span class="text-muted">(115-1 學期)</span>
+                        </li>
+                        <li>
+                            <strong>培力英檢 (BESTEP):</strong> 閱讀B2+ / 聽力B2+ / 寫作B2 / 口說B2
+                        </li>
+                        <li>
+                            <strong>TOEFL iBT:</strong> 82 <span class="text-muted">(Sept 14, 2024)</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="column">
+                    <h2 class="section-title">TECHNICAL SKILLS ｜ 專業技能</h2>
+                    <div class="skills-container">
+                        <div class="skill-category">
+                            <h4>Numerical Computing</h4>
+                            <p>MATLAB, Python (NumPy, SciPy, Matplotlib)</p>
+                        </div>
+                        <div class="skill-category">
+                            <h4>Optical Simulation</h4>
+                            <p>RSoft, 光波導與積體光學元件模擬</p>
+                        </div>
+                        <div class="skill-category">
+                            <h4>Physics & Photonics</h4>
+                            <p>TCMT, 動態調變光學微腔, 光波導傳輸理論</p>
+                        </div>
+                        <div class="skill-category">
+                            <h4>實驗系統操作</h4>
+                            <p>Laser, Fiber Ring Resonator, SOA, EOM, RF Amplifier, Photodetector 操作與量測</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 Sheng-Yang Fan. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
