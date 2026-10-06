@@ -299,6 +299,10 @@ a:hover {
     display: flex;
     flex-direction: column;
     gap: 20px;
+    list-style: none;
+    padding: 0;
+    max-width: 800px;
+    margin: 0 auto;
 }
 
 .blog-row-card {
@@ -317,7 +321,7 @@ a:hover {
 .blog-row-card:hover {
     border-color: var(--accent-color);
     transform: translateY(-3px);
-    box-shadow: var(--card-shadow);
+    box-shadow: 0 8px 15px rgba(0,0,0,0.08);
 }
 
 .blog-row-content {
