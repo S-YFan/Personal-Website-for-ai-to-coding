@@ -396,11 +396,6 @@ a:hover {
     transform: translateX(3px);
 }
 
-.read-more-btn.disabled {
-    color: #ccc;
-    pointer-events: none;
-}
-
 /* Post Layout */
 .post-header {
     margin-top: 100px;
