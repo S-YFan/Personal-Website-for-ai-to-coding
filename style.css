@@ -167,12 +167,6 @@ a:hover {
     border-color: var(--accent-color);
 }
 
-.contact-info {
-    font-size: 0.95rem;
-    color: var(--text-muted);
-    padding: 8px 10px;
-}
-
 /* Cards (Education & Projects) */
 .card {
     background: #fff;
