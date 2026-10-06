@@ -1,0 +1,25 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "> **Disclaimer:**   > This repository is a personal sandbox rather than a showcase of traditional software engineering or web development best practices.",
+  "main": "script.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/S-YFan/Personal-Website-for-ai-to-coding.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/S-YFan/Personal-Website-for-ai-to-coding/issues"
+  },
+  "homepage": "https://github.com/S-YFan/Personal-Website-for-ai-to-coding#readme",
+  "devDependencies": {
+    "jest": "^30.5.2",
+    "jest-environment-jsdom": "^30.5.2"
+  }
+}
