@@ -247,31 +247,98 @@ function initKaTeX(articleElement) {
     });
 }
 
+// Helper functions for hash navigation, TOC generation, and slugifying
+function getElementByHash(hash) {
+    if (!hash || typeof hash !== 'string') return null;
+    let rawId = hash.startsWith('#') ? hash.slice(1) : hash;
+    if (!rawId) return null;
+
+    let decodedId = rawId;
+    try {
+        decodedId = decodeURIComponent(rawId);
+    } catch (e) {
+        decodedId = rawId;
+    }
+
+    let el = document.getElementById(decodedId);
+    if (!el && decodedId !== rawId) {
+        el = document.getElementById(rawId);
+    }
+    return el;
+}
+
+function getCleanHeadingText(element) {
+    if (!element) return '';
+    let text = '';
+    element.childNodes.forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE) {
+            text += node.textContent;
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+            if (node.classList.contains('heading-anchor') || node.classList.contains('katex-mathml')) {
+                return;
+            }
+            text += getCleanHeadingText(node);
+        }
+    });
+    return text.trim();
+}
+
+function slugify(text) {
+    return text
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\u4e00-\u9fa5\s-]/g, '')
+        .replace(/[\s_]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'section';
+}
+
+function scrollToElement(targetElement, navbar, isInstant = false) {
+    if (!targetElement) return;
+    const navbarHeight = navbar ? navbar.offsetHeight : 70;
+    const elementPosition = targetElement.getBoundingClientRect().top;
+    const offsetPosition = elementPosition + window.pageYOffset - navbarHeight - 10;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    window.scrollTo({
+        top: offsetPosition,
+        behavior: (isInstant || prefersReducedMotion) ? 'auto' : 'smooth'
+    });
+}
+
+function createTocLabel(heading) {
+    const fragment = document.createDocumentFragment();
+    heading.childNodes.forEach(node => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            if (node.classList.contains('heading-anchor') || node.classList.contains('katex-mathml')) {
+                return;
+            }
+            const cloned = node.cloneNode(true);
+            cloned.querySelectorAll?.('.heading-anchor, .katex-mathml').forEach(el => el.remove());
+            fragment.appendChild(cloned);
+        } else if (node.nodeType === Node.TEXT_NODE) {
+            fragment.appendChild(node.cloneNode(true));
+        }
+    });
+    return fragment;
+}
+
 function initArticleFeatures(articleElement, navbar) {
     const headings = Array.from(articleElement.querySelectorAll('h2, h3'));
     if (headings.length === 0) return;
 
-    // Helper to generate slug from heading text
-    function slugify(text) {
-        return text
-            .toLowerCase()
-            .trim()
-            .replace(/[^\w\u4e00-\u9fa5\s-]/g, '')
-            .replace(/[\s_]+/g, '-')
-            .replace(/^-+|-+$/g, '') || 'section';
-    }
-
+    // Collect all existing IDs across the entire document to avoid collisions
     const existingIds = new Set();
-    headings.forEach(h => {
-        if (h.id) {
-            existingIds.add(h.id);
+    document.querySelectorAll('[id]').forEach(el => {
+        if (el.id) {
+            existingIds.add(el.id);
         }
     });
 
     // Ensure all headings have unique IDs & Add Heading Anchors
     headings.forEach(h => {
         if (!h.id) {
-            let baseSlug = slugify(h.textContent);
+            const cleanText = getCleanHeadingText(h);
+            let baseSlug = slugify(cleanText);
             let slug = baseSlug;
             let counter = 1;
             while (existingIds.has(slug)) {
@@ -281,14 +348,23 @@ function initArticleFeatures(articleElement, navbar) {
             existingIds.add(slug);
         }
 
-        // Add anchor link next to heading
-        const anchor = document.createElement('a');
-        anchor.className = 'heading-anchor';
-        anchor.href = `#${h.id}`;
-        anchor.setAttribute('aria-label', `Link to ${h.textContent.trim()}`);
-        anchor.innerHTML = '🔗';
-        h.appendChild(anchor);
+        // Add anchor link next to heading if not already added
+        if (!h.querySelector('a.heading-anchor')) {
+            const anchor = document.createElement('a');
+            anchor.className = 'heading-anchor';
+            anchor.href = `#${h.id}`;
+            const cleanText = getCleanHeadingText(h);
+            anchor.setAttribute('aria-label', `Link to ${cleanText}`);
+            anchor.innerHTML = '🔗';
+            h.appendChild(anchor);
+        }
     });
+
+    // Remove existing TOC container if present to prevent duplication
+    const existingToc = articleElement.querySelector('nav.toc');
+    if (existingToc) {
+        existingToc.remove();
+    }
 
     // Build Dynamic Table of Contents (TOC)
     const tocContainer = document.createElement('nav');
@@ -312,13 +388,13 @@ function initArticleFeatures(articleElement, navbar) {
 
         const link = document.createElement('a');
         link.href = `#${h.id}`;
-        // Clone text without the anchor icon
-        const textContent = Array.from(h.childNodes)
-            .filter(node => node.nodeType === Node.TEXT_NODE)
-            .map(node => node.textContent)
-            .join('')
-            .trim();
-        link.textContent = textContent || h.textContent.replace('🔗', '').trim();
+
+        const tocLabelFragment = createTocLabel(h);
+        if (tocLabelFragment.childNodes.length > 0) {
+            link.appendChild(tocLabelFragment);
+        } else {
+            link.textContent = getCleanHeadingText(h) || h.id;
+        }
 
         item.appendChild(link);
 
@@ -367,7 +443,8 @@ function initArticleFeatures(articleElement, navbar) {
                 if (entry.isIntersecting) {
                     const id = entry.target.id;
                     tocLinks.forEach(link => {
-                        if (link.getAttribute('href') === `#${id}`) {
+                        const target = getElementByHash(link.getAttribute('href'));
+                        if (target && target.id === id) {
                             link.classList.add('active');
                             link.setAttribute('aria-current', 'true');
                         } else {
@@ -383,36 +460,38 @@ function initArticleFeatures(articleElement, navbar) {
     }
 
     // Back to Top Button
-    const backToTopBtn = document.createElement('button');
-    backToTopBtn.className = 'back-to-top';
-    backToTopBtn.setAttribute('aria-label', 'Back to top');
-    backToTopBtn.setAttribute('type', 'button');
-    backToTopBtn.innerHTML = `
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <path d="M12 4l-8 8h5v8h6v-8h5z"/>
-        </svg>
-    `;
-    document.body.appendChild(backToTopBtn);
+    if (!document.querySelector('button.back-to-top')) {
+        const backToTopBtn = document.createElement('button');
+        backToTopBtn.className = 'back-to-top';
+        backToTopBtn.setAttribute('aria-label', 'Back to top');
+        backToTopBtn.setAttribute('type', 'button');
+        backToTopBtn.innerHTML = `
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 4l-8 8h5v8h6v-8h5z"/>
+            </svg>
+        `;
+        document.body.appendChild(backToTopBtn);
 
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    function handleScroll() {
-        if (window.pageYOffset > 300) {
-            backToTopBtn.classList.add('is-visible');
-        } else {
-            backToTopBtn.classList.remove('is-visible');
+        function handleScroll() {
+            if (window.pageYOffset > 300) {
+                backToTopBtn.classList.add('is-visible');
+            } else {
+                backToTopBtn.classList.remove('is-visible');
+            }
         }
-    }
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        handleScroll();
 
-    backToTopBtn.addEventListener('click', () => {
-        window.scrollTo({
-            top: 0,
-            behavior: prefersReducedMotion ? 'auto' : 'smooth'
+        backToTopBtn.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: prefersReducedMotion ? 'auto' : 'smooth'
+            });
         });
-    });
+    }
 
     // Smooth scroll handling for internal hash links with navbar offset
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -420,17 +499,10 @@ function initArticleFeatures(articleElement, navbar) {
             const targetId = this.getAttribute('href');
             if (!targetId || targetId === '#') return;
 
-            const targetElement = document.querySelector(targetId);
+            const targetElement = getElementByHash(targetId);
             if (targetElement) {
                 e.preventDefault();
-                const navbarHeight = navbar ? navbar.offsetHeight : 70;
-                const elementPosition = targetElement.getBoundingClientRect().top;
-                const offsetPosition = elementPosition + window.pageYOffset - navbarHeight - 10;
-
-                window.scrollTo({
-                    top: offsetPosition,
-                    behavior: prefersReducedMotion ? 'auto' : 'smooth'
-                });
+                scrollToElement(targetElement, navbar);
 
                 if (history.pushState) {
                     history.pushState(null, '', targetId);
@@ -443,16 +515,10 @@ function initArticleFeatures(articleElement, navbar) {
 
     // Handle deep link scroll on initial page load
     if (window.location.hash) {
-        const hashTarget = document.querySelector(window.location.hash);
+        const hashTarget = getElementByHash(window.location.hash);
         if (hashTarget) {
             setTimeout(() => {
-                const navbarHeight = navbar ? navbar.offsetHeight : 70;
-                const elementPosition = hashTarget.getBoundingClientRect().top;
-                const offsetPosition = elementPosition + window.pageYOffset - navbarHeight - 10;
-                window.scrollTo({
-                    top: offsetPosition,
-                    behavior: 'auto'
-                });
+                scrollToElement(hashTarget, navbar, true);
             }, 100);
         }
     }
