@@ -70,19 +70,29 @@ function hasMathContent(articleElement) {
         }
     });
 
+    let combinedText = '';
     let node;
-    const mathPattern = /\\\(|\\\[|\$\$/;
     while ((node = walker.nextNode())) {
-        if (mathPattern.test(node.nodeValue)) {
-            return true;
-        }
+        combinedText += node.nodeValue + '\n';
     }
-    return false;
+
+    // Supported complete delimiter pairs:
+    // Inline: \( ... \)
+    // Display: \[ ... \] or $$ ... $$
+    const inlineMathPattern = /\\\([\s\S]+?\\\)/;
+    const displayBracketPattern = /\\\[[\s\S]+?\\\]/;
+    const displayDollarPattern = /\$\$[\s\S]+?\$\$/;
+
+    return inlineMathPattern.test(combinedText) ||
+           displayBracketPattern.test(combinedText) ||
+           displayDollarPattern.test(combinedText);
 }
 
 function loadStylesheet(href, timeoutMs = 8000) {
     return new Promise((resolve, reject) => {
         let link = document.querySelector(`link[href="${href}"]`);
+        let isNew = false;
+
         if (link) {
             if (link.dataset.loaded === 'true') {
                 return resolve();
@@ -91,11 +101,10 @@ function loadStylesheet(href, timeoutMs = 8000) {
                 return reject(new Error(`Stylesheet previously failed to load: ${href}`));
             }
         } else {
+            isNew = true;
             link = document.createElement('link');
             link.rel = 'stylesheet';
-            link.href = href;
             link.crossOrigin = 'anonymous';
-            document.head.appendChild(link);
         }
 
         let finished = false;
@@ -103,13 +112,18 @@ function loadStylesheet(href, timeoutMs = 8000) {
 
         function cleanup() {
             finished = true;
-            if (timer) clearTimeout(timer);
+            if (timer) {
+                clearTimeout(timer);
+                timer = null;
+            }
             link.removeEventListener('load', onLoad);
             link.removeEventListener('error', onError);
         }
 
         function onLoad() {
             if (finished) return;
+            // Note on late load events: If an element timed out previously, dataset.failed remains 'true'.
+            // Event listeners are removed in cleanup(), ensuring late success does not create inconsistent state.
             link.dataset.loaded = 'true';
             cleanup();
             resolve();
@@ -122,6 +136,7 @@ function loadStylesheet(href, timeoutMs = 8000) {
             reject(new Error(`Failed to load stylesheet: ${href}`));
         }
 
+        // Register handlers BEFORE appending to DOM or setting href
         link.addEventListener('load', onLoad);
         link.addEventListener('error', onError);
 
@@ -131,12 +146,19 @@ function loadStylesheet(href, timeoutMs = 8000) {
             cleanup();
             reject(new Error(`Timeout loading stylesheet: ${href}`));
         }, timeoutMs);
+
+        if (isNew) {
+            link.href = href;
+            document.head.appendChild(link);
+        }
     });
 }
 
 function loadScript(src, timeoutMs = 8000) {
     return new Promise((resolve, reject) => {
         let script = document.querySelector(`script[src="${src}"]`);
+        let isNew = false;
+
         if (script) {
             if (script.dataset.loaded === 'true') {
                 return resolve();
@@ -145,10 +167,9 @@ function loadScript(src, timeoutMs = 8000) {
                 return reject(new Error(`Script previously failed to load: ${src}`));
             }
         } else {
+            isNew = true;
             script = document.createElement('script');
-            script.src = src;
             script.crossOrigin = 'anonymous';
-            document.head.appendChild(script);
         }
 
         let finished = false;
@@ -156,13 +177,18 @@ function loadScript(src, timeoutMs = 8000) {
 
         function cleanup() {
             finished = true;
-            if (timer) clearTimeout(timer);
+            if (timer) {
+                clearTimeout(timer);
+                timer = null;
+            }
             script.removeEventListener('load', onLoad);
             script.removeEventListener('error', onError);
         }
 
         function onLoad() {
             if (finished) return;
+            // Note on late load events: If a script timed out previously, dataset.failed remains 'true'.
+            // Event listeners are removed in cleanup(), ensuring late success does not create inconsistent state.
             script.dataset.loaded = 'true';
             cleanup();
             resolve();
@@ -175,6 +201,7 @@ function loadScript(src, timeoutMs = 8000) {
             reject(new Error(`Failed to load script: ${src}`));
         }
 
+        // Register handlers BEFORE appending to DOM or setting src
         script.addEventListener('load', onLoad);
         script.addEventListener('error', onError);
 
@@ -184,6 +211,11 @@ function loadScript(src, timeoutMs = 8000) {
             cleanup();
             reject(new Error(`Timeout loading script: ${src}`));
         }, timeoutMs);
+
+        if (isNew) {
+            script.src = src;
+            document.head.appendChild(script);
+        }
     });
 }
 
@@ -222,29 +254,40 @@ function initKaTeX(articleElement) {
 
     const TIMEOUT_MS = 8000;
 
-    Promise.all([
-        loadStylesheet(cssUrl, TIMEOUT_MS),
-        loadScript(katexJsUrl, TIMEOUT_MS).then(() => loadScript(autoRenderJsUrl, TIMEOUT_MS))
-    ])
-    .then(() => {
-        if (typeof window.renderMathInElement === 'function') {
-            window.renderMathInElement(articleElement, {
-                delimiters: [
-                    { left: '$$', right: '$$', display: true },
-                    { left: '\\[', right: '\\]', display: true },
-                    { left: '\\(', right: '\\)', display: false }
-                ],
-                ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
-                throwOnError: false
-            });
-        } else {
+    const stylesheetPromise = loadStylesheet(cssUrl, TIMEOUT_MS);
+    const scriptsPromise = loadScript(katexJsUrl, TIMEOUT_MS)
+        .then(() => loadScript(autoRenderJsUrl, TIMEOUT_MS));
+
+    // Handle individual promise rejections with no-op catch to prevent unhandled rejections in background
+    // if Promise.all rejects fast when one resource fails/times out while others are pending.
+    stylesheetPromise.catch(() => {});
+    scriptsPromise.catch(() => {});
+
+    Promise.all([stylesheetPromise, scriptsPromise])
+        .then(() => {
+            if (typeof window.renderMathInElement === 'function') {
+                try {
+                    window.renderMathInElement(articleElement, {
+                        delimiters: [
+                            { left: '$$', right: '$$', display: true },
+                            { left: '\\[', right: '\\]', display: true },
+                            { left: '\\(', right: '\\)', display: false }
+                        ],
+                        ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+                        throwOnError: false
+                    });
+                } catch (renderError) {
+                    console.warn('KaTeX rendering exception:', renderError);
+                    showKaTeXErrorNotice(articleElement);
+                }
+            } else {
+                showKaTeXErrorNotice(articleElement);
+            }
+        })
+        .catch((err) => {
+            console.warn('KaTeX loading failed or timed out:', err);
             showKaTeXErrorNotice(articleElement);
-        }
-    })
-    .catch((err) => {
-        console.warn('KaTeX loading failed or timed out:', err);
-        showKaTeXErrorNotice(articleElement);
-    });
+        });
 }
 
 // Helper functions for hash navigation, TOC generation, and slugifying
@@ -307,18 +350,55 @@ function scrollToElement(targetElement, navbar, isInstant = false) {
 
 function createTocLabel(heading) {
     const fragment = document.createDocumentFragment();
-    heading.childNodes.forEach(node => {
+
+    function processNode(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            return node.cloneNode(true);
+        }
         if (node.nodeType === Node.ELEMENT_NODE) {
+            // Remove heading anchor permalinks and KaTeX accessibility MathML
             if (node.classList.contains('heading-anchor') || node.classList.contains('katex-mathml')) {
-                return;
+                return null;
             }
-            const cloned = node.cloneNode(true);
-            cloned.querySelectorAll?.('.heading-anchor, .katex-mathml').forEach(el => el.remove());
-            fragment.appendChild(cloned);
-        } else if (node.nodeType === Node.TEXT_NODE) {
-            fragment.appendChild(node.cloneNode(true));
+
+            const tagName = node.tagName.toUpperCase();
+
+            // Exclude interactive elements
+            if (['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'].includes(tagName)) {
+                return null;
+            }
+
+            // Unwrap <a> links to prevent invalid nested <a> tags in TOC
+            if (tagName === 'A') {
+                const span = document.createElement('span');
+                node.childNodes.forEach(child => {
+                    const processed = processNode(child);
+                    if (processed) span.appendChild(processed);
+                });
+                return span;
+            }
+
+            // Clone element node without ID to avoid duplicate DOM IDs
+            const cloned = node.cloneNode(false);
+            cloned.removeAttribute('id');
+
+            node.childNodes.forEach(child => {
+                const processed = processNode(child);
+                if (processed) cloned.appendChild(processed);
+            });
+
+            return cloned;
+        }
+        return null;
+    }
+
+    heading.childNodes.forEach(node => {
+        const processed = processNode(node);
+        if (processed) {
+            fragment.appendChild(processed);
         }
     });
+
     return fragment;
 }
 
@@ -404,7 +484,6 @@ function initArticleFeatures(articleElement, navbar) {
             rootList.appendChild(item);
         } else if (h.tagName.toLowerCase() === 'h3') {
             if (!currentH2Li) {
-                // H3 without prior H2
                 rootList.appendChild(item);
             } else {
                 if (!currentH3List) {
@@ -428,6 +507,12 @@ function initArticleFeatures(articleElement, navbar) {
         insertTarget.parentNode.insertBefore(tocContainer, insertTarget);
     } else {
         articleElement.appendChild(tocContainer);
+    }
+
+    // Clean up previous observer if re-initialized
+    if (articleElement._headingObserver) {
+        articleElement._headingObserver.disconnect();
+        articleElement._headingObserver = null;
     }
 
     // Active Section Highlighting on Scroll
@@ -457,6 +542,7 @@ function initArticleFeatures(articleElement, navbar) {
         }, observerOptions);
 
         headings.forEach(h => headingObserver.observe(h));
+        articleElement._headingObserver = headingObserver;
     }
 
     // Back to Top Button
@@ -493,10 +579,14 @@ function initArticleFeatures(articleElement, navbar) {
         });
     }
 
-    // Smooth scroll handling for internal hash links with navbar offset
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            const targetId = this.getAttribute('href');
+    // Global document-level event delegation for internal hash links (registered once)
+    if (!document._hashClickListenerAdded) {
+        document._hashClickListenerAdded = true;
+        document.addEventListener('click', (e) => {
+            const anchor = e.target.closest('a[href^="#"]');
+            if (!anchor) return;
+
+            const targetId = anchor.getAttribute('href');
             if (!targetId || targetId === '#') return;
 
             const targetElement = getElementByHash(targetId);
@@ -511,7 +601,7 @@ function initArticleFeatures(articleElement, navbar) {
                 }
             }
         });
-    });
+    }
 
     // Handle deep link scroll on initial page load
     if (window.location.hash) {
