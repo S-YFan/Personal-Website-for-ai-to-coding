@@ -53,59 +53,197 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
+function hasMathContent(articleElement) {
+    if (!articleElement) return false;
+    const ignoredTags = ['SCRIPT', 'NOSCRIPT', 'STYLE', 'TEXTAREA', 'PRE', 'CODE'];
+    const walker = document.createTreeWalker(articleElement, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+            if (!node.nodeValue) return NodeFilter.FILTER_REJECT;
+            let parent = node.parentElement;
+            while (parent && parent !== articleElement) {
+                if (ignoredTags.includes(parent.tagName)) {
+                    return NodeFilter.FILTER_REJECT;
+                }
+                parent = parent.parentElement;
+            }
+            return NodeFilter.FILTER_ACCEPT;
+        }
+    });
+
+    let node;
+    const mathPattern = /\\\(|\\\[|\$\$/;
+    while ((node = walker.nextNode())) {
+        if (mathPattern.test(node.nodeValue)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function loadStylesheet(href, timeoutMs = 8000) {
+    return new Promise((resolve, reject) => {
+        let link = document.querySelector(`link[href="${href}"]`);
+        if (link) {
+            if (link.dataset.loaded === 'true') {
+                return resolve();
+            }
+            if (link.dataset.failed === 'true') {
+                return reject(new Error(`Stylesheet previously failed to load: ${href}`));
+            }
+        } else {
+            link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = href;
+            link.crossOrigin = 'anonymous';
+            document.head.appendChild(link);
+        }
+
+        let finished = false;
+        let timer = null;
+
+        function cleanup() {
+            finished = true;
+            if (timer) clearTimeout(timer);
+            link.removeEventListener('load', onLoad);
+            link.removeEventListener('error', onError);
+        }
+
+        function onLoad() {
+            if (finished) return;
+            link.dataset.loaded = 'true';
+            cleanup();
+            resolve();
+        }
+
+        function onError() {
+            if (finished) return;
+            link.dataset.failed = 'true';
+            cleanup();
+            reject(new Error(`Failed to load stylesheet: ${href}`));
+        }
+
+        link.addEventListener('load', onLoad);
+        link.addEventListener('error', onError);
+
+        timer = setTimeout(() => {
+            if (finished) return;
+            link.dataset.failed = 'true';
+            cleanup();
+            reject(new Error(`Timeout loading stylesheet: ${href}`));
+        }, timeoutMs);
+    });
+}
+
+function loadScript(src, timeoutMs = 8000) {
+    return new Promise((resolve, reject) => {
+        let script = document.querySelector(`script[src="${src}"]`);
+        if (script) {
+            if (script.dataset.loaded === 'true') {
+                return resolve();
+            }
+            if (script.dataset.failed === 'true') {
+                return reject(new Error(`Script previously failed to load: ${src}`));
+            }
+        } else {
+            script = document.createElement('script');
+            script.src = src;
+            script.crossOrigin = 'anonymous';
+            document.head.appendChild(script);
+        }
+
+        let finished = false;
+        let timer = null;
+
+        function cleanup() {
+            finished = true;
+            if (timer) clearTimeout(timer);
+            script.removeEventListener('load', onLoad);
+            script.removeEventListener('error', onError);
+        }
+
+        function onLoad() {
+            if (finished) return;
+            script.dataset.loaded = 'true';
+            cleanup();
+            resolve();
+        }
+
+        function onError() {
+            if (finished) return;
+            script.dataset.failed = 'true';
+            cleanup();
+            reject(new Error(`Failed to load script: ${src}`));
+        }
+
+        script.addEventListener('load', onLoad);
+        script.addEventListener('error', onError);
+
+        timer = setTimeout(() => {
+            if (finished) return;
+            script.dataset.failed = 'true';
+            cleanup();
+            reject(new Error(`Timeout loading script: ${src}`));
+        }, timeoutMs);
+    });
+}
+
+function showKaTeXErrorNotice(articleElement) {
+    if (!articleElement || articleElement.querySelector('.katex-error-notice')) {
+        return;
+    }
+
+    const notice = document.createElement('div');
+    notice.className = 'katex-error-notice';
+    notice.setAttribute('role', 'status');
+    notice.setAttribute('aria-live', 'polite');
+    notice.innerHTML = `
+        <p><strong>提示：</strong>數學公式元件載入失敗，頁面已保留原始 LaTeX 內容。</p>
+    `;
+
+    const header = articleElement.querySelector('.post-header');
+    if (header && header.nextSibling) {
+        articleElement.insertBefore(notice, header.nextSibling);
+    } else {
+        articleElement.insertBefore(notice, articleElement.firstChild);
+    }
+}
+
 function initKaTeX(articleElement) {
     if (!articleElement) return;
+
+    if (!hasMathContent(articleElement)) {
+        return;
+    }
 
     const KATEX_VERSION = '0.16.11';
     const cssUrl = `https://cdn.jsdelivr.net/npm/katex@${KATEX_VERSION}/dist/katex.min.css`;
     const katexJsUrl = `https://cdn.jsdelivr.net/npm/katex@${KATEX_VERSION}/dist/katex.min.js`;
     const autoRenderJsUrl = `https://cdn.jsdelivr.net/npm/katex@${KATEX_VERSION}/dist/contrib/auto-render.min.js`;
 
-    // Inject KaTeX stylesheet
-    if (!document.querySelector(`link[href="${cssUrl}"]`)) {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = cssUrl;
-        link.crossOrigin = 'anonymous';
-        document.head.appendChild(link);
-    }
+    const TIMEOUT_MS = 8000;
 
-    // Helper to dynamically load script sequentially
-    function loadScript(src, callback) {
-        const existingScript = document.querySelector(`script[src="${src}"]`);
-        if (existingScript) {
-            if (existingScript.dataset.loaded === 'true') {
-                callback();
-            } else {
-                existingScript.addEventListener('load', callback);
-            }
-            return;
+    Promise.all([
+        loadStylesheet(cssUrl, TIMEOUT_MS),
+        loadScript(katexJsUrl, TIMEOUT_MS).then(() => loadScript(autoRenderJsUrl, TIMEOUT_MS))
+    ])
+    .then(() => {
+        if (typeof window.renderMathInElement === 'function') {
+            window.renderMathInElement(articleElement, {
+                delimiters: [
+                    { left: '$$', right: '$$', display: true },
+                    { left: '\\[', right: '\\]', display: true },
+                    { left: '\\(', right: '\\)', display: false }
+                ],
+                ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+                throwOnError: false
+            });
+        } else {
+            showKaTeXErrorNotice(articleElement);
         }
-
-        const script = document.createElement('script');
-        script.src = src;
-        script.crossOrigin = 'anonymous';
-        script.onload = () => {
-            script.dataset.loaded = 'true';
-            callback();
-        };
-        document.head.appendChild(script);
-    }
-
-    loadScript(katexJsUrl, () => {
-        loadScript(autoRenderJsUrl, () => {
-            if (window.renderMathInElement) {
-                window.renderMathInElement(articleElement, {
-                    delimiters: [
-                        { left: '$$', right: '$$', display: true },
-                        { left: '\\[', right: '\\]', display: true },
-                        { left: '\\(', right: '\\)', display: false }
-                    ],
-                    ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
-                    throwOnError: false
-                });
-            }
-        });
+    })
+    .catch((err) => {
+        console.warn('KaTeX loading failed or timed out:', err);
+        showKaTeXErrorNotice(articleElement);
     });
 }
 
