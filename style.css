@@ -638,6 +638,19 @@ a:hover {
     margin-bottom: 0;
 }
 
+/* KaTeX Math Formatting & Mobile Responsiveness */
+.katex-display {
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
+    padding: 8px 0;
+    margin: 1em 0;
+}
+
+.katex-display > .katex {
+    white-space: normal;
+}
+
 /* Footer */
 .footer {
     background-color: var(--primary-color);

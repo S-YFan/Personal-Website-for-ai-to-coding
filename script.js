@@ -45,12 +45,69 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Article Page Features (Table of Contents, Heading Anchors, Back-to-Top)
+    // Article Page Features (Table of Contents, Heading Anchors, Back-to-Top, KaTeX Math)
     const postArticle = document.querySelector('article.post-content');
     if (postArticle) {
         initArticleFeatures(postArticle, navbar);
+        initKaTeX(postArticle);
     }
 });
+
+function initKaTeX(articleElement) {
+    if (!articleElement) return;
+
+    const KATEX_VERSION = '0.16.11';
+    const cssUrl = `https://cdn.jsdelivr.net/npm/katex@${KATEX_VERSION}/dist/katex.min.css`;
+    const katexJsUrl = `https://cdn.jsdelivr.net/npm/katex@${KATEX_VERSION}/dist/katex.min.js`;
+    const autoRenderJsUrl = `https://cdn.jsdelivr.net/npm/katex@${KATEX_VERSION}/dist/contrib/auto-render.min.js`;
+
+    // Inject KaTeX stylesheet
+    if (!document.querySelector(`link[href="${cssUrl}"]`)) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = cssUrl;
+        link.crossOrigin = 'anonymous';
+        document.head.appendChild(link);
+    }
+
+    // Helper to dynamically load script sequentially
+    function loadScript(src, callback) {
+        const existingScript = document.querySelector(`script[src="${src}"]`);
+        if (existingScript) {
+            if (existingScript.dataset.loaded === 'true') {
+                callback();
+            } else {
+                existingScript.addEventListener('load', callback);
+            }
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.src = src;
+        script.crossOrigin = 'anonymous';
+        script.onload = () => {
+            script.dataset.loaded = 'true';
+            callback();
+        };
+        document.head.appendChild(script);
+    }
+
+    loadScript(katexJsUrl, () => {
+        loadScript(autoRenderJsUrl, () => {
+            if (window.renderMathInElement) {
+                window.renderMathInElement(articleElement, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '\\[', right: '\\]', display: true },
+                        { left: '\\(', right: '\\)', display: false }
+                    ],
+                    ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+                    throwOnError: false
+                });
+            }
+        });
+    });
+}
 
 function initArticleFeatures(articleElement, navbar) {
     const headings = Array.from(articleElement.querySelectorAll('h2, h3'));
