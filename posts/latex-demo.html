@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>KaTeX 數學公式渲染展示與使用指南 | Sheng-Yang Fan</title>
+    <link rel="stylesheet" href="../style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="../index.html" class="nav-logo">Sheng-Yang Fan</a>
+            <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="nav-menu">
+                <span class="hamburger-bar"></span>
+                <span class="hamburger-bar"></span>
+                <span class="hamburger-bar"></span>
+            </button>
+            <ul id="nav-menu" class="nav-menu">
+                <li><a href="../index.html">Home</a></li>
+                <li><a href="../about.html">About</a></li>
+                <li><a href="../resume.html">Resume</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        <article class="post-content">
+            <header class="post-header">
+                <a href="../index.html#blog" class="back-link">&larr; Back to Home</a>
+                <div class="blog-tags" style="margin-bottom: 15px;">
+                    <span class="tag">KaTeX</span>
+                    <span class="tag">LaTeX</span>
+                    <span class="tag">Documentation</span>
+                </div>
+                <h1 class="post-title">KaTeX 數學公式渲染展示與使用指南</h1>
+                <div class="post-meta">
+                    <span>發布日期：2026-10-20</span>
+                    <span>分類：技術文件 / KaTeX Demo</span>
+                </div>
+            </header>
+
+            <section>
+                <h2 id="inline-math">一、行內公式（Inline Math）展示</h2>
+                <p>在文章段落中，可以使用行內公式來表達數學符號與短算術式。例如愛因斯坦著名的質能等價公式為 \( E = mc^2 \)，質子的靜止能量可以直接寫在句中。</p>
+                <p>其他常見行內公式範例包含歐拉公式 \( e^{i\pi} + 1 = 0 \)、高斯積分 \(\int_{-\infty}^{\infty} e^{-x^2} dx = \sqrt{\pi}\) 以及簡單分數 \(\frac{a}{b}\)。</p>
+            </section>
+
+            <section>
+                <h2 id="display-math">二、區塊公式（Display Math）展示</h2>
+                <p>獨立顯示的數學方程或推導過程可以使用區塊公式，如下所示：</p>
+
+                <p>基本分數與算式：</p>
+                \[ \frac{a}{b} = c \]
+
+                <p>電磁學中的馬克斯威方程組（Maxwell's Equations）：</p>
+                \[
+                \begin{aligned}
+                \nabla \cdot \mathbf{E} &= \frac{\rho}{\varepsilon_0} \\
+                \nabla \cdot \mathbf{B} &= 0 \\
+                \nabla \times \mathbf{E} &= -\frac{\partial \mathbf{B}}{\partial t} \\
+                \nabla \times \mathbf{B} &= \mu_0 \mathbf{J} + \mu_0 \varepsilon_0 \frac{\partial \mathbf{E}}{\partial t}
+                \end{aligned}
+                \]
+
+                <p>矩陣運算範例：</p>
+                \[
+                \begin{pmatrix}
+                a & b \\
+                c & d
+                \end{pmatrix}
+                \begin{pmatrix}
+                x \\
+                y
+                \end{pmatrix}
+                =
+                \begin{pmatrix}
+                ax + by \\
+                cx + dy
+                \end{pmatrix}
+                \]
+            </section>
+
+            <section>
+                <h2 id="code-block-literal">三、程式碼區塊與原始碼保護（Code Block Literal Test）</h2>
+                <p>為了確保程式碼與教學區塊不受公式解析干擾，所有的 <code>&lt;pre&gt;</code> 與 <code>&lt;code&gt;</code> 標籤皆被設為排除解析。以下為字面顯示（Literal Text）測試：</p>
+                <pre><code>// 這是一段程式碼區塊，裡面的 LaTeX 語法不會被解析為數學公式：
+const formula = "\( E = mc^2 \)";
+const displayMath = "\\[ \\frac{a}{b} = c \\]";
+console.log(formula, displayMath);</code></pre>
+                <p>段落中的單行程式碼例如 <code>\( E = mc^2 \)</code> 或 <code>\[ \frac{a}{b} = c \]</code> 也會保持原樣顯示。</p>
+            </section>
+
+            <section>
+                <h2 id="usage-guide">四、未來文章撰寫指南 (Writing Guide)</h2>
+                <p>本網站已整合 KaTeX 自動渲染模組，撰寫新文章時無需手動引入額外腳本，只需依照下列分隔符號撰寫：</p>
+                <ul>
+                    <li><strong>行內公式 (Inline Math)：</strong> 使用 <code>\( ... \)</code> 包裹 LaTeX 語法。例如 <code>\( E = mc^2 \)</code>。</li>
+                    <li><strong>區塊公式 (Display Math)：</strong> 使用 <code>\[ ... \]</code> 或 <code>$$ ... $$</code> 包裹 LaTeX 語法。例如 <code>\[ \frac{a}{b} = c \]</code>。</li>
+                    <li><strong>網路需求：</strong> 文章頁面會在瀏覽器端載入 jsDelivr CDN 託管的 KaTeX 樣式與腳本（版本 pinned 於 0.16.11）。</li>
+                </ul>
+            </section>
+        </article>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Sheng-Yang Fan. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script src="../script.js"></script>
+</body>
+</html>
