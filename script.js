@@ -55,56 +55,141 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function initKaTeX(articleElement) {
     if (!articleElement) return;
+    if (articleElement.dataset.katexRendered === 'true') return;
 
     const KATEX_VERSION = '0.16.11';
     const cssUrl = `https://cdn.jsdelivr.net/npm/katex@${KATEX_VERSION}/dist/katex.min.css`;
     const katexJsUrl = `https://cdn.jsdelivr.net/npm/katex@${KATEX_VERSION}/dist/katex.min.js`;
     const autoRenderJsUrl = `https://cdn.jsdelivr.net/npm/katex@${KATEX_VERSION}/dist/contrib/auto-render.min.js`;
 
-    // Inject KaTeX stylesheet
-    if (!document.querySelector(`link[href="${cssUrl}"]`)) {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = cssUrl;
-        link.crossOrigin = 'anonymous';
-        document.head.appendChild(link);
+    function showMathNotice() {
+        if (articleElement.querySelector('.katex-status-notice')) return;
+        const notice = document.createElement('div');
+        notice.className = 'katex-status-notice';
+        notice.setAttribute('role', 'status');
+        notice.setAttribute('aria-live', 'polite');
+        notice.textContent = '數學公式渲染資源無法載入，已維持原始語法顯示。';
+
+        const postHeader = articleElement.querySelector('.post-header');
+        if (postHeader && postHeader.nextSibling) {
+            articleElement.insertBefore(notice, postHeader.nextSibling);
+        } else {
+            articleElement.insertBefore(notice, articleElement.firstChild);
+        }
     }
 
-    // Helper to dynamically load script sequentially
-    function loadScript(src, callback) {
-        const existingScript = document.querySelector(`script[src="${src}"]`);
-        if (existingScript) {
-            if (existingScript.dataset.loaded === 'true') {
-                callback();
+    function loadStyle(href, callback) {
+        let link = document.querySelector(`link[href="${href}"]`);
+        if (link) {
+            if (link.dataset.loaded === 'true' || link.sheet) {
+                callback(null);
+            } else if (link.dataset.failed === 'true') {
+                callback(new Error(`Failed to load stylesheet: ${href}`));
             } else {
-                existingScript.addEventListener('load', callback);
+                const handleLoad = () => { cleanup(); callback(null); };
+                const handleError = () => { cleanup(); callback(new Error(`Failed to load stylesheet: ${href}`)); };
+                const cleanup = () => {
+                    link.removeEventListener('load', handleLoad);
+                    link.removeEventListener('error', handleError);
+                };
+                link.addEventListener('load', handleLoad);
+                link.addEventListener('error', handleError);
             }
             return;
         }
 
-        const script = document.createElement('script');
+        link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = href;
+        link.crossOrigin = 'anonymous';
+        link.onload = () => {
+            link.dataset.loaded = 'true';
+            callback(null);
+        };
+        link.onerror = () => {
+            link.dataset.failed = 'true';
+            callback(new Error(`Failed to load stylesheet: ${href}`));
+        };
+        document.head.appendChild(link);
+    }
+
+    function loadScript(src, isLoadedCheck, callback) {
+        if (isLoadedCheck && isLoadedCheck()) {
+            callback(null);
+            return;
+        }
+
+        let script = document.querySelector(`script[src="${src}"]`);
+        if (script) {
+            if (script.dataset.loaded === 'true') {
+                callback(null);
+            } else if (script.dataset.failed === 'true') {
+                callback(new Error(`Failed to load script: ${src}`));
+            } else {
+                const handleLoad = () => { cleanup(); callback(null); };
+                const handleError = () => { cleanup(); callback(new Error(`Failed to load script: ${src}`)); };
+                const cleanup = () => {
+                    script.removeEventListener('load', handleLoad);
+                    script.removeEventListener('error', handleError);
+                };
+                script.addEventListener('load', handleLoad);
+                script.addEventListener('error', handleError);
+            }
+            return;
+        }
+
+        script = document.createElement('script');
         script.src = src;
         script.crossOrigin = 'anonymous';
         script.onload = () => {
             script.dataset.loaded = 'true';
-            callback();
+            callback(null);
+        };
+        script.onerror = () => {
+            script.dataset.failed = 'true';
+            callback(new Error(`Failed to load script: ${src}`));
         };
         document.head.appendChild(script);
     }
 
-    loadScript(katexJsUrl, () => {
-        loadScript(autoRenderJsUrl, () => {
-            if (window.renderMathInElement) {
-                window.renderMathInElement(articleElement, {
-                    delimiters: [
-                        { left: '$$', right: '$$', display: true },
-                        { left: '\\[', right: '\\]', display: true },
-                        { left: '\\(', right: '\\)', display: false }
-                    ],
-                    ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
-                    throwOnError: false
-                });
+    loadStyle(cssUrl, (cssErr) => {
+        if (cssErr) {
+            showMathNotice();
+            return;
+        }
+
+        loadScript(katexJsUrl, () => typeof window.katex !== 'undefined', (jsErr) => {
+            if (jsErr) {
+                showMathNotice();
+                return;
             }
+
+            loadScript(autoRenderJsUrl, () => typeof window.renderMathInElement !== 'undefined', (autoErr) => {
+                if (autoErr) {
+                    showMathNotice();
+                    return;
+                }
+
+                try {
+                    if (typeof window.renderMathInElement === 'function') {
+                        window.renderMathInElement(articleElement, {
+                            delimiters: [
+                                { left: '$$', right: '$$', display: true },
+                                { left: '\\[', right: '\\]', display: true },
+                                { left: '\\(', right: '\\)', display: false }
+                            ],
+                            ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+                            throwOnError: false
+                        });
+                        articleElement.dataset.katexRendered = 'true';
+                    } else {
+                        showMathNotice();
+                    }
+                } catch (err) {
+                    console.error('KaTeX rendering failed:', err);
+                    showMathNotice();
+                }
+            });
         });
     });
 }

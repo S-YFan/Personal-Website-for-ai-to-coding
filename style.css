@@ -647,6 +647,17 @@ a:hover {
     margin: 1em 0;
 }
 
+.katex-status-notice {
+    background-color: var(--bg-light);
+    border: 1px solid var(--border-color);
+    border-left: 4px solid #e67e22;
+    padding: 12px 18px;
+    margin: 20px 0;
+    border-radius: 0 6px 6px 0;
+    font-size: 0.95rem;
+    color: var(--text-main);
+}
+
 /* Footer */
 .footer {
     background-color: var(--primary-color);
