@@ -55,13 +55,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function hasMathContent(articleElement) {
     if (!articleElement) return false;
-    const ignoredTags = ['SCRIPT', 'NOSCRIPT', 'STYLE', 'TEXTAREA', 'PRE', 'CODE'];
+
+    const ignoredTags = new Set(['SCRIPT', 'NOSCRIPT', 'STYLE', 'TEXTAREA', 'PRE', 'CODE']);
+    const blockTags = new Set([
+        'ARTICLE', 'ASIDE', 'BLOCKQUOTE', 'CAPTION', 'DD', 'DETAILS', 'DIV', 'DL',
+        'DT', 'FIELDSET', 'FIGCAPTION', 'FIGURE', 'FOOTER', 'FORM', 'H1', 'H2',
+        'H3', 'H4', 'H5', 'H6', 'HEADER', 'LI', 'MAIN', 'NAV', 'P', 'SECTION',
+        'SUMMARY', 'TABLE', 'TD', 'TH', 'TR'
+    ]);
+
     const walker = document.createTreeWalker(articleElement, NodeFilter.SHOW_TEXT, {
         acceptNode(node) {
             if (!node.nodeValue) return NodeFilter.FILTER_REJECT;
             let parent = node.parentElement;
             while (parent && parent !== articleElement) {
-                if (ignoredTags.includes(parent.tagName)) {
+                if (ignoredTags.has(parent.tagName.toUpperCase())) {
                     return NodeFilter.FILTER_REJECT;
                 }
                 parent = parent.parentElement;
@@ -70,22 +78,38 @@ function hasMathContent(articleElement) {
         }
     });
 
-    let combinedText = '';
+    const blockMap = new Map();
     let node;
+
     while ((node = walker.nextNode())) {
-        combinedText += node.nodeValue + '\n';
+        let parent = node.parentElement;
+        let blockContainer = articleElement;
+
+        while (parent && parent !== articleElement) {
+            if (blockTags.has(parent.tagName.toUpperCase())) {
+                blockContainer = parent;
+                break;
+            }
+            parent = parent.parentElement;
+        }
+
+        if (!blockMap.has(blockContainer)) {
+            blockMap.set(blockContainer, '');
+        }
+        blockMap.set(blockContainer, blockMap.get(blockContainer) + node.nodeValue);
     }
 
-    // Supported complete delimiter pairs:
-    // Inline: \( ... \)
-    // Display: \[ ... \] or $$ ... $$
     const inlineMathPattern = /\\\([\s\S]+?\\\)/;
     const displayBracketPattern = /\\\[[\s\S]+?\\\]/;
     const displayDollarPattern = /\$\$[\s\S]+?\$\$/;
 
-    return inlineMathPattern.test(combinedText) ||
-           displayBracketPattern.test(combinedText) ||
-           displayDollarPattern.test(combinedText);
+    for (const text of blockMap.values()) {
+        if (inlineMathPattern.test(text) || displayBracketPattern.test(text) || displayDollarPattern.test(text)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function loadStylesheet(href, timeoutMs = 8000) {
@@ -351,43 +375,49 @@ function scrollToElement(targetElement, navbar, isInstant = false) {
 function createTocLabel(heading) {
     const fragment = document.createDocumentFragment();
 
+    const ALLOWED_FORMATTING_TAGS = new Set([
+        'EM', 'STRONG', 'B', 'I', 'CODE', 'SPAN', 'SUB', 'SUP',
+        'SMALL', 'MARK', 'DEL', 'INS', 'ABBR', 'CITE', 'Q', 'DFN',
+        'VAR', 'S', 'U'
+    ]);
+
+    const EXCLUDED_TAGS = new Set([
+        'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'SCRIPT', 'STYLE', 'NOSCRIPT'
+    ]);
+
     function processNode(node) {
         if (node.nodeType === Node.TEXT_NODE) {
             return node.cloneNode(true);
         }
         if (node.nodeType === Node.ELEMENT_NODE) {
-            // Remove heading anchor permalinks and KaTeX accessibility MathML
+            // Exclude heading anchor permalinks and KaTeX accessibility MathML
             if (node.classList.contains('heading-anchor') || node.classList.contains('katex-mathml')) {
                 return null;
             }
 
             const tagName = node.tagName.toUpperCase();
 
-            // Exclude interactive elements
-            if (['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'].includes(tagName)) {
+            // Exclude interactive / script elements
+            if (EXCLUDED_TAGS.has(tagName)) {
                 return null;
             }
 
-            // Unwrap <a> links to prevent invalid nested <a> tags in TOC
-            if (tagName === 'A') {
-                const span = document.createElement('span');
-                node.childNodes.forEach(child => {
-                    const processed = processNode(child);
-                    if (processed) span.appendChild(processed);
-                });
-                return span;
+            let container;
+            if (ALLOWED_FORMATTING_TAGS.has(tagName)) {
+                container = document.createElement(tagName.toLowerCase());
+            } else {
+                // Unwrap links ('A') or other unlisted tags into span without copying attributes
+                container = document.createElement('span');
             }
-
-            // Clone element node without ID to avoid duplicate DOM IDs
-            const cloned = node.cloneNode(false);
-            cloned.removeAttribute('id');
 
             node.childNodes.forEach(child => {
                 const processed = processNode(child);
-                if (processed) cloned.appendChild(processed);
+                if (processed) {
+                    container.appendChild(processed);
+                }
             });
 
-            return cloned;
+            return container;
         }
         return null;
     }
