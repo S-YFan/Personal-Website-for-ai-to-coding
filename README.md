@@ -7,7 +7,7 @@
 - 專案由本人（Sheng-Yang Fan）主導需求規格設計，並親自進行細部程式碼重構、樣式微調（HTML/CSS/JS）與分支歷史校準。
 
 ## 架構特點
-- **Zero Dependencies / Vanilla Stack**：完全不依賴大型前端框架（如 React/Vue）或龐大建置工具鏈，僅使用純原生 HTML5、CSS3 與 JavaScript，極致輕量且零維護負擔。
+- **Zero Dependencies / Vanilla Stack**：本架構僅僅使用 HTML5、CSS3 與 JavaScript。
 
 ## 目錄結構
 ```text
