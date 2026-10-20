@@ -465,7 +465,7 @@ function initArticleFeatures(articleElement, navbar) {
             anchor.href = `#${h.id}`;
             const cleanText = getCleanHeadingText(h);
             anchor.setAttribute('aria-label', `Link to ${cleanText}`);
-            anchor.innerHTML = '🔗';
+            anchor.textContent = '🔗';
             h.appendChild(anchor);
         }
     });
