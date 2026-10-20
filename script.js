@@ -432,10 +432,7 @@ function createTocLabel(heading) {
     return fragment;
 }
 
-function initArticleFeatures(articleElement, navbar) {
-    const headings = Array.from(articleElement.querySelectorAll('h2, h3'));
-    if (headings.length === 0) return;
-
+function initHeadingAnchors(headings) {
     // Collect all existing IDs across the entire document to avoid collisions
     const existingIds = new Set();
     document.querySelectorAll('[id]').forEach(el => {
@@ -469,7 +466,9 @@ function initArticleFeatures(articleElement, navbar) {
             h.appendChild(anchor);
         }
     });
+}
 
+function initTOC(articleElement, headings) {
     // Remove existing TOC container if present to prevent duplication
     const existingToc = articleElement.querySelector('nav.toc');
     if (existingToc) {
@@ -539,6 +538,10 @@ function initArticleFeatures(articleElement, navbar) {
         articleElement.appendChild(tocContainer);
     }
 
+    return tocContainer;
+}
+
+function initScrollspy(articleElement, headings, tocContainer) {
     // Clean up previous observer if re-initialized
     if (articleElement._headingObserver) {
         articleElement._headingObserver.disconnect();
@@ -574,7 +577,9 @@ function initArticleFeatures(articleElement, navbar) {
         headings.forEach(h => headingObserver.observe(h));
         articleElement._headingObserver = headingObserver;
     }
+}
 
+function initBackToTop() {
     // Back to Top Button
     if (!document.querySelector('button.back-to-top')) {
         const backToTopBtn = document.createElement('button');
@@ -608,7 +613,9 @@ function initArticleFeatures(articleElement, navbar) {
             });
         });
     }
+}
 
+function initHashNavigation(navbar) {
     // Global document-level event delegation for internal hash links (registered once)
     if (!document._hashClickListenerAdded) {
         document._hashClickListenerAdded = true;
@@ -642,4 +649,15 @@ function initArticleFeatures(articleElement, navbar) {
             }, 100);
         }
     }
+}
+
+function initArticleFeatures(articleElement, navbar) {
+    const headings = Array.from(articleElement.querySelectorAll('h2, h3'));
+    if (headings.length === 0) return;
+
+    initHeadingAnchors(headings);
+    const tocContainer = initTOC(articleElement, headings);
+    initScrollspy(articleElement, headings, tocContainer);
+    initBackToTop();
+    initHashNavigation(navbar);
 }
