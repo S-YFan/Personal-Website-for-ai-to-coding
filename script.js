@@ -547,6 +547,16 @@ function initArticleFeatures(articleElement, navbar) {
 
     // Active Section Highlighting on Scroll
     const tocLinks = Array.from(tocContainer.querySelectorAll('a[href^="#"]'));
+
+    // Pre-calculate target mapping to reduce DOM queries inside the scroll observer
+    const linkTargets = tocLinks.map(link => {
+        const target = getElementByHash(link.getAttribute('href'));
+        return {
+            link: link,
+            targetId: target ? target.id : null
+        };
+    });
+
     if ('IntersectionObserver' in window) {
         const observerOptions = {
             rootMargin: '-80px 0px -60% 0px',
@@ -557,14 +567,13 @@ function initArticleFeatures(articleElement, navbar) {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     const id = entry.target.id;
-                    tocLinks.forEach(link => {
-                        const target = getElementByHash(link.getAttribute('href'));
-                        if (target && target.id === id) {
-                            link.classList.add('active');
-                            link.setAttribute('aria-current', 'true');
+                    linkTargets.forEach(item => {
+                        if (item.targetId === id) {
+                            item.link.classList.add('active');
+                            item.link.setAttribute('aria-current', 'true');
                         } else {
-                            link.classList.remove('active');
-                            link.removeAttribute('aria-current');
+                            item.link.classList.remove('active');
+                            item.link.removeAttribute('aria-current');
                         }
                     });
                 }
