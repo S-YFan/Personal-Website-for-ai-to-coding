@@ -252,9 +252,13 @@ function showKaTeXErrorNotice(articleElement) {
     notice.className = 'katex-error-notice';
     notice.setAttribute('role', 'status');
     notice.setAttribute('aria-live', 'polite');
-    notice.innerHTML = `
-        <p><strong>提示：</strong>數學公式元件載入失敗，頁面已保留原始 LaTeX 內容。</p>
-    `;
+
+    const p = document.createElement('p');
+    const strong = document.createElement('strong');
+    strong.textContent = '提示：';
+    p.appendChild(strong);
+    p.appendChild(document.createTextNode('數學公式元件載入失敗，頁面已保留原始 LaTeX 內容。'));
+    notice.appendChild(p);
 
     const header = articleElement.querySelector('.post-header');
     if (header && header.nextSibling) {
