@@ -372,18 +372,18 @@ function scrollToElement(targetElement, navbar, isInstant = false) {
     });
 }
 
+const ALLOWED_FORMATTING_TAGS = new Set([
+    'EM', 'STRONG', 'B', 'I', 'CODE', 'SPAN', 'SUB', 'SUP',
+    'SMALL', 'MARK', 'DEL', 'INS', 'ABBR', 'CITE', 'Q', 'DFN',
+    'VAR', 'S', 'U'
+]);
+
+const EXCLUDED_TAGS = new Set([
+    'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'SCRIPT', 'STYLE', 'NOSCRIPT'
+]);
+
 function createTocLabel(heading) {
     const fragment = document.createDocumentFragment();
-
-    const ALLOWED_FORMATTING_TAGS = new Set([
-        'EM', 'STRONG', 'B', 'I', 'CODE', 'SPAN', 'SUB', 'SUP',
-        'SMALL', 'MARK', 'DEL', 'INS', 'ABBR', 'CITE', 'Q', 'DFN',
-        'VAR', 'S', 'U'
-    ]);
-
-    const EXCLUDED_TAGS = new Set([
-        'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'SCRIPT', 'STYLE', 'NOSCRIPT'
-    ]);
 
     function processNode(node) {
         if (node.nodeType === Node.TEXT_NODE) {
