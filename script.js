@@ -53,16 +53,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
+const ignoredTags = new Set(['SCRIPT', 'NOSCRIPT', 'STYLE', 'TEXTAREA', 'PRE', 'CODE']);
+const blockTags = new Set([
+    'ARTICLE', 'ASIDE', 'BLOCKQUOTE', 'CAPTION', 'DD', 'DETAILS', 'DIV', 'DL',
+    'DT', 'FIELDSET', 'FIGCAPTION', 'FIGURE', 'FOOTER', 'FORM', 'H1', 'H2',
+    'H3', 'H4', 'H5', 'H6', 'HEADER', 'LI', 'MAIN', 'NAV', 'P', 'SECTION',
+    'SUMMARY', 'TABLE', 'TD', 'TH', 'TR'
+]);
+
 function hasMathContent(articleElement) {
     if (!articleElement) return false;
-
-    const ignoredTags = new Set(['SCRIPT', 'NOSCRIPT', 'STYLE', 'TEXTAREA', 'PRE', 'CODE']);
-    const blockTags = new Set([
-        'ARTICLE', 'ASIDE', 'BLOCKQUOTE', 'CAPTION', 'DD', 'DETAILS', 'DIV', 'DL',
-        'DT', 'FIELDSET', 'FIGCAPTION', 'FIGURE', 'FOOTER', 'FORM', 'H1', 'H2',
-        'H3', 'H4', 'H5', 'H6', 'HEADER', 'LI', 'MAIN', 'NAV', 'P', 'SECTION',
-        'SUMMARY', 'TABLE', 'TD', 'TH', 'TR'
-    ]);
 
     const walker = document.createTreeWalker(articleElement, NodeFilter.SHOW_TEXT, {
         acceptNode(node) {
