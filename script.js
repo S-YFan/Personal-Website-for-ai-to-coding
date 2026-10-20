@@ -514,17 +514,21 @@ function initArticleFeatures(articleElement, navbar) {
             currentH2Li = item;
             currentH3List = null;
             rootList.appendChild(item);
-        } else if (h.tagName.toLowerCase() === 'h3') {
+            return;
+        }
+
+        if (h.tagName.toLowerCase() === 'h3') {
             if (!currentH2Li) {
                 rootList.appendChild(item);
-            } else {
-                if (!currentH3List) {
-                    currentH3List = document.createElement('ul');
-                    currentH3List.className = 'toc-sublist';
-                    currentH2Li.appendChild(currentH3List);
-                }
-                currentH3List.appendChild(item);
+                return;
             }
+
+            if (!currentH3List) {
+                currentH3List = document.createElement('ul');
+                currentH3List.className = 'toc-sublist';
+                currentH2Li.appendChild(currentH3List);
+            }
+            currentH3List.appendChild(item);
         }
     });
 
