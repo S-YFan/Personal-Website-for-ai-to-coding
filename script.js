@@ -581,11 +581,18 @@ function initArticleFeatures(articleElement, navbar) {
         backToTopBtn.className = 'back-to-top';
         backToTopBtn.setAttribute('aria-label', 'Back to top');
         backToTopBtn.setAttribute('type', 'button');
-        backToTopBtn.innerHTML = `
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <path d="M12 4l-8 8h5v8h6v-8h5z"/>
-            </svg>
-        `;
+
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', 'M12 4l-8 8h5v8h6v-8h5z');
+
+        svg.appendChild(path);
+        backToTopBtn.appendChild(svg);
+
         document.body.appendChild(backToTopBtn);
 
         const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
