@@ -264,6 +264,27 @@ function showKaTeXErrorNotice(articleElement) {
     }
 }
 
+function renderKaTeX(articleElement) {
+    if (typeof window.renderMathInElement === 'function') {
+        try {
+            window.renderMathInElement(articleElement, {
+                delimiters: [
+                    { left: '$$', right: '$$', display: true },
+                    { left: '\\[', right: '\\]', display: true },
+                    { left: '\\(', right: '\\)', display: false }
+                ],
+                ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+                throwOnError: false
+            });
+        } catch (renderError) {
+            console.warn('KaTeX rendering exception:', renderError);
+            showKaTeXErrorNotice(articleElement);
+        }
+    } else {
+        showKaTeXErrorNotice(articleElement);
+    }
+}
+
 function initKaTeX(articleElement) {
     if (!articleElement) return;
 
@@ -288,26 +309,7 @@ function initKaTeX(articleElement) {
     scriptsPromise.catch(() => {});
 
     Promise.all([stylesheetPromise, scriptsPromise])
-        .then(() => {
-            if (typeof window.renderMathInElement === 'function') {
-                try {
-                    window.renderMathInElement(articleElement, {
-                        delimiters: [
-                            { left: '$$', right: '$$', display: true },
-                            { left: '\\[', right: '\\]', display: true },
-                            { left: '\\(', right: '\\)', display: false }
-                        ],
-                        ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
-                        throwOnError: false
-                    });
-                } catch (renderError) {
-                    console.warn('KaTeX rendering exception:', renderError);
-                    showKaTeXErrorNotice(articleElement);
-                }
-            } else {
-                showKaTeXErrorNotice(articleElement);
-            }
-        })
+        .then(() => renderKaTeX(articleElement))
         .catch((err) => {
             console.warn('KaTeX loading failed or timed out:', err);
             showKaTeXErrorNotice(articleElement);
