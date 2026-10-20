@@ -563,7 +563,7 @@ function initArticleFeatures(articleElement, navbar) {
             threshold: 0
         };
 
-        const headingObserver = new IntersectionObserver(entries => {
+        function handleHeadingIntersection(entries) {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     const id = entry.target.id;
@@ -578,7 +578,9 @@ function initArticleFeatures(articleElement, navbar) {
                     });
                 }
             });
-        }, observerOptions);
+        }
+
+        const headingObserver = new IntersectionObserver(handleHeadingIntersection, observerOptions);
 
         headings.forEach(h => headingObserver.observe(h));
         articleElement._headingObserver = headingObserver;
