@@ -47,7 +47,7 @@ const createTextNode = (textContent) => ({
 describe('slugify', () => {
     test('should lowercase strings', () => {
         assert.strictEqual(slugify('HELLO'), 'hello');
-        assert.strictEqual(slugify('Hello World'), 'hello-world');
+        assert.strictEqual(slugify('Mixed CASE'), 'mixed-case');
     });
 
     test('should replace spaces and underscores with hyphens', () => {
@@ -131,16 +131,16 @@ describe('getCleanHeadingText', () => {
 
     test('should skip elements with katex-mathml class', () => {
         const el = createElement([
-            createTextNode('Equation '),
+            createTextNode('Equation'),
             createElement([createTextNode('E=mc^2')], ['katex-mathml']),
             createTextNode(' End')
         ]);
-        assert.strictEqual(getCleanHeadingText(el), 'Equation  End');
+        assert.strictEqual(getCleanHeadingText(el), 'Equation End');
     });
 
     test('should skip elements with both skipped classes', () => {
         const el = createElement([
-            createTextNode('Title '),
+            createTextNode('Title'),
             createElement([createTextNode('SkipMe1')], ['heading-anchor']),
             createElement([createTextNode('SkipMe2')], ['katex-mathml'])
         ]);
