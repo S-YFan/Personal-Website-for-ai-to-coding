@@ -31,6 +31,7 @@ vm.runInContext(scriptContent, context);
 
 const slugify = context.slugify;
 const getCleanHeadingText = context.getCleanHeadingText;
+const getElementByHash = context.getElementByHash;
 
 const createElement = (childNodes = [], classList = []) => ({
     nodeType: 1, // Node.ELEMENT_NODE
@@ -88,7 +89,6 @@ describe('slugify', () => {
         assert.strictEqual(slugify('12345'), '12345');
     });
 });
-
 
 describe('getCleanHeadingText', () => {
     test('should handle null or undefined', () => {
@@ -167,8 +167,6 @@ describe('getCleanHeadingText', () => {
     });
 });
 
-const getElementByHash = context.getElementByHash;
-
 describe('getElementByHash', () => {
     beforeEach(() => {
         // Reset document.getElementById before each test
@@ -215,6 +213,5 @@ describe('getElementByHash', () => {
         const mockEl = { id: '%E6%B8' };
         context.document.getElementById = (id) => id === '%E6%B8' ? mockEl : null;
         assert.strictEqual(getElementByHash('#%E6%B8'), mockEl);
-
     });
 });
