@@ -8,7 +8,7 @@ A personal website sharing my technical and reading notes, interactive projects,
 
 - **About Me** — Personal background, research interests, and academic experience.
 - **Notes** — Physics, mathematics, technical explorations, and reflections on reading.
-- **Interactive Projects** — Browser-based tools and visual experiments for hands-on exploration.
+- **Tools** — Browser-based tools and visual experiments for hands-on exploration.
 
 ## Technology and Development
 
