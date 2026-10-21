@@ -215,3 +215,137 @@ describe('getElementByHash', () => {
         assert.strictEqual(getElementByHash('#%E6%B8'), mockEl);
     });
 });
+
+const showKaTeXErrorNotice = context.showKaTeXErrorNotice;
+
+describe('showKaTeXErrorNotice', () => {
+    beforeEach(() => {
+        // Reset document methods for this suite
+        context.document.createElement = (tagName) => {
+            const el = {
+                tagName: tagName.toUpperCase(),
+                className: '',
+                attributes: {},
+                childNodes: [],
+                setAttribute(name, value) {
+                    this.attributes[name] = value;
+                },
+                appendChild(child) {
+                    this.childNodes.push(child);
+                }
+            };
+            return el;
+        };
+        context.document.createTextNode = (text) => {
+            return { nodeType: context.Node.TEXT_NODE, textContent: text };
+        };
+    });
+
+    test('should do nothing if articleElement is null or undefined', () => {
+        // Should not throw
+        assert.doesNotThrow(() => showKaTeXErrorNotice(null));
+        assert.doesNotThrow(() => showKaTeXErrorNotice(undefined));
+    });
+
+    test('should do nothing if katex-error-notice already exists', () => {
+        let queriedClass = null;
+        const articleElement = {
+            querySelector(selector) {
+                queriedClass = selector;
+                return {}; // Simulate element found
+            }
+        };
+        showKaTeXErrorNotice(articleElement);
+        assert.strictEqual(queriedClass, '.katex-error-notice');
+        // Notice should not be created (we can't assert this directly but no errors mean we successfully returned)
+    });
+
+    test('should insert notice after post-header if it exists', () => {
+        const header = { nextSibling: { isNextSibling: true } };
+        let querySelectorCallCount = 0;
+        let insertedNode = null;
+        let referenceNode = null;
+
+        const articleElement = {
+            querySelector(selector) {
+                querySelectorCallCount++;
+                if (selector === '.katex-error-notice') return null;
+                if (selector === '.post-header') return header;
+                return null;
+            },
+            insertBefore(newNode, refNode) {
+                insertedNode = newNode;
+                referenceNode = refNode;
+            }
+        };
+
+        showKaTeXErrorNotice(articleElement);
+
+        assert.strictEqual(querySelectorCallCount, 2);
+        assert.ok(insertedNode);
+        assert.strictEqual(insertedNode.className, 'katex-error-notice');
+        assert.strictEqual(insertedNode.attributes['role'], 'status');
+        assert.strictEqual(insertedNode.attributes['aria-live'], 'polite');
+
+        // Check paragraph and text
+        const p = insertedNode.childNodes[0];
+        assert.strictEqual(p.tagName, 'P');
+        const strong = p.childNodes[0];
+        assert.strictEqual(strong.tagName, 'STRONG');
+        assert.strictEqual(strong.textContent, '提示：');
+        const textNode = p.childNodes[1];
+        assert.strictEqual(textNode.nodeType, context.Node.TEXT_NODE);
+        assert.strictEqual(textNode.textContent, '數學公式元件載入失敗，頁面已保留原始 LaTeX 內容。');
+
+        assert.strictEqual(referenceNode, header.nextSibling);
+    });
+
+    test('should insert notice at beginning if post-header does not exist', () => {
+        let insertedNode = null;
+        let referenceNode = null;
+        const firstChild = { isFirstChild: true };
+
+        const articleElement = {
+            firstChild,
+            querySelector(selector) {
+                return null; // Both .katex-error-notice and .post-header return null
+            },
+            insertBefore(newNode, refNode) {
+                insertedNode = newNode;
+                referenceNode = refNode;
+            }
+        };
+
+        showKaTeXErrorNotice(articleElement);
+
+        assert.ok(insertedNode);
+        assert.strictEqual(insertedNode.className, 'katex-error-notice');
+        assert.strictEqual(referenceNode, firstChild);
+    });
+
+    test('should insert notice at beginning if post-header exists but has no nextSibling', () => {
+        let insertedNode = null;
+        let referenceNode = null;
+        const firstChild = { isFirstChild: true };
+        const header = { nextSibling: null }; // Exists but no nextSibling
+
+        const articleElement = {
+            firstChild,
+            querySelector(selector) {
+                if (selector === '.katex-error-notice') return null;
+                if (selector === '.post-header') return header;
+                return null;
+            },
+            insertBefore(newNode, refNode) {
+                insertedNode = newNode;
+                referenceNode = refNode;
+            }
+        };
+
+        showKaTeXErrorNotice(articleElement);
+
+        assert.ok(insertedNode);
+        assert.strictEqual(insertedNode.className, 'katex-error-notice');
+        assert.strictEqual(referenceNode, firstChild);
+    });
+});
