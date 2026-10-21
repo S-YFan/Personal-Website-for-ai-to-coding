@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOOLS | 開發工具與網站 - Sheng-Yang Fan</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-logo">Sheng-Yang Fan</a>
+            <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="nav-menu">
+                <span class="hamburger-bar"></span>
+                <span class="hamburger-bar"></span>
+                <span class="hamburger-bar"></span>
+            </button>
+            <ul id="nav-menu" class="nav-menu">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="about.html">About</a></li>
+                <li><a href="resume.html">Resume</a></li>
+                <li><a href="tools.html" class="active">Tools</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main>
+        <section id="tools" class="section">
+            <div class="container">
+                <header class="section-header">
+                    <h2 class="section-title">TOOLS ｜ 開發工具與網站</h2>
+                </header>
+
+                <article class="card project-card">
+                    <div class="card-header">
+                        <h3 class="project-title">Fourier Image Lab / Playground（傅立葉影像處理互動實驗室）</h3>
+                    </div>
+                    <div class="project-details" style="margin-bottom: 20px;">
+                        <p>在瀏覽器端即時運算的 2D 傅立葉轉換互動實驗室，支援 RGB 相位交換、頻譜平移與高斯濾波視覺化實驗。</p>
+                    </div>
+                    <div class="contact-links" style="justify-content: flex-start;">
+                        <a href="https://s-yfan.github.io/Foruier-Image-Playground/" class="contact-btn" target="_blank" rel="noopener noreferrer">Website</a>
+                        <a href="https://github.com/S-YFan/Foruier-Image-Playground" class="contact-btn" target="_blank" rel="noopener noreferrer">GitHub Repo</a>
+                    </div>
+                </article>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Sheng-Yang Fan. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
