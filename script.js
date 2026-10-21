@@ -67,6 +67,17 @@ const blockTags = new Set([
     'SUMMARY', 'TABLE', 'TD', 'TH', 'TR'
 ]);
 
+function findAncestorWithTag(node, rootElement, tagSet) {
+    let parent = node.parentElement;
+    while (parent && parent !== rootElement) {
+        if (tagSet.has(parent.tagName.toUpperCase())) {
+            return parent;
+        }
+        parent = parent.parentElement;
+    }
+    return null;
+}
+
 function hasMathContent(articleElement) {
     if (!articleElement) return false;
 
@@ -78,23 +89,11 @@ function hasMathContent(articleElement) {
     while ((node = walker.nextNode())) {
         if (!node.nodeValue) continue;
 
-        let parent = node.parentElement;
-        let blockContainer = articleElement;
-        let isIgnored = false;
-
-        while (parent && parent !== articleElement) {
-            const tagName = parent.tagName.toUpperCase();
-            if (ignoredTags.has(tagName)) {
-                isIgnored = true;
-                break;
-            }
-            if (blockContainer === articleElement && blockTags.has(tagName)) {
-                blockContainer = parent;
-            }
-            parent = parent.parentElement;
+        if (findAncestorWithTag(node, articleElement, ignoredTags)) {
+            continue;
         }
 
-        if (isIgnored) continue;
+        let blockContainer = findAncestorWithTag(node, articleElement, blockTags) || articleElement;
 
         if (!blockMap.has(blockContainer)) {
             blockMap.set(blockContainer, '');
