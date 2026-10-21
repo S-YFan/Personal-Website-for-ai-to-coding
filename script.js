@@ -435,7 +435,7 @@ function createTocLabel(heading) {
     return fragment;
 }
 
-function initHeadingAnchors(headings) {
+function initHeadingAnchors(headings, headingCleanTextCache) {
     // Collect all existing IDs across the entire document to avoid collisions
     const existingIds = new Set();
     document.querySelectorAll('[id]').forEach(el => {
@@ -446,8 +446,12 @@ function initHeadingAnchors(headings) {
 
     // Ensure all headings have unique IDs & Add Heading Anchors
     headings.forEach(h => {
+        const cleanText = getCleanHeadingText(h);
+        if (headingCleanTextCache) {
+            headingCleanTextCache.set(h, cleanText);
+        }
+
         if (!h.id) {
-            const cleanText = getCleanHeadingText(h);
             let baseSlug = slugify(cleanText);
             let slug = baseSlug;
             let counter = 1;
@@ -463,7 +467,6 @@ function initHeadingAnchors(headings) {
             const anchor = document.createElement('a');
             anchor.className = 'heading-anchor';
             anchor.href = `#${h.id}`;
-            const cleanText = getCleanHeadingText(h);
             anchor.setAttribute('aria-label', `Link to ${cleanText}`);
             anchor.textContent = '🔗';
             h.appendChild(anchor);
@@ -471,7 +474,7 @@ function initHeadingAnchors(headings) {
     });
 }
 
-function initTOC(articleElement, headings) {
+function initTOC(articleElement, headings, headingCleanTextCache) {
     // Remove existing TOC container if present to prevent duplication
     const existingToc = articleElement.querySelector('nav.toc');
     if (existingToc) {
@@ -505,7 +508,13 @@ function initTOC(articleElement, headings) {
         if (tocLabelFragment.childNodes.length > 0) {
             link.appendChild(tocLabelFragment);
         } else {
-            link.textContent = getCleanHeadingText(h) || h.id;
+            let cleanText;
+            if (headingCleanTextCache && headingCleanTextCache.has(h)) {
+                cleanText = headingCleanTextCache.get(h);
+            } else {
+                cleanText = getCleanHeadingText(h);
+            }
+            link.textContent = cleanText || h.id;
         }
 
         item.appendChild(link);
@@ -684,8 +693,11 @@ function initArticleFeatures(articleElement, navbar) {
     const headings = Array.from(articleElement.querySelectorAll('h2, h3'));
     if (headings.length === 0) return;
 
-    initHeadingAnchors(headings);
-    const tocContainer = initTOC(articleElement, headings);
+    // Cache to prevent redundant DOM tree traversals when extracting clean heading text
+    const headingCleanTextCache = new WeakMap();
+
+    initHeadingAnchors(headings, headingCleanTextCache);
+    const tocContainer = initTOC(articleElement, headings, headingCleanTextCache);
     initScrollspy(articleElement, headings, tocContainer);
     initBackToTop();
     initHashNavigation(navbar);
