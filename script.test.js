@@ -11,7 +11,15 @@ const context = {
         addEventListener: () => {},
         querySelector: () => null,
         querySelectorAll: () => [],
-        createElement: () => ({}),
+        createElement: (tag) => ({
+            tagName: tag.toUpperCase(),
+            className: '',
+            attributes: {},
+            childNodes: [],
+            setAttribute: function(name, value) { this.attributes[name] = value; },
+            appendChild: function(child) { this.childNodes.push(child); },
+        }),
+        createTextNode: (text) => ({ nodeType: 3, textContent: text }),
         body: { appendChild: () => {} },
         getElementById: () => null, // initial mock
         createTreeWalker: (root, whatToShow, filter) => {
@@ -58,6 +66,7 @@ const slugify = context.slugify;
 const getCleanHeadingText = context.getCleanHeadingText;
 const getElementByHash = context.getElementByHash;
 const hasMathContent = context.hasMathContent;
+const showKaTeXErrorNotice = context.showKaTeXErrorNotice;
 
 const createElement = (tagNameOrChildNodes, childNodesOrClassList, classListOrUndef) => {
     let tagName = 'DIV';
@@ -266,6 +275,7 @@ describe('getElementByHash', () => {
         assert.strictEqual(getElementByHash('#%E6%B8'), mockEl);
     });
 });
+
 describe('hasMathContent', () => {
     test('should return false for null or undefined', () => {
         assert.strictEqual(hasMathContent(null), false);
@@ -343,5 +353,111 @@ describe('hasMathContent', () => {
             ])
         ]);
         assert.strictEqual(hasMathContent(el), false);
+    });
+});
+
+describe('showKaTeXErrorNotice', () => {
+    let mockArticle;
+
+    beforeEach(() => {
+        mockArticle = {
+            childNodes: [],
+            get firstChild() { return this.childNodes[0] || null; },
+            querySelector: function(selector) {
+                if (selector === '.katex-error-notice') {
+                    return this.childNodes.find(c => c.className === 'katex-error-notice') || null;
+                }
+                if (selector === '.post-header') {
+                    return this.childNodes.find(c => c.className === 'post-header') || null;
+                }
+                return null;
+            },
+            insertBefore: function(newNode, referenceNode) {
+                if (!referenceNode) {
+                    this.childNodes.unshift(newNode);
+                } else {
+                    const index = this.childNodes.indexOf(referenceNode);
+                    if (index !== -1) {
+                        this.childNodes.splice(index, 0, newNode);
+                    } else {
+                        this.childNodes.unshift(newNode);
+                    }
+                }
+            }
+        };
+    });
+
+    test('should insert notice at the top if no .post-header exists', () => {
+        const dummyNode = { tagName: 'P', className: 'dummy' };
+        mockArticle.childNodes.push(dummyNode);
+
+        showKaTeXErrorNotice(mockArticle);
+
+        assert.strictEqual(mockArticle.childNodes.length, 2);
+        assert.strictEqual(mockArticle.childNodes[0].className, 'katex-error-notice');
+        assert.strictEqual(mockArticle.childNodes[1], dummyNode);
+    });
+
+    test('should insert notice after .post-header if it exists', () => {
+        const headerNode = { tagName: 'DIV', className: 'post-header', nextSibling: { tagName: 'P', className: 'dummy' } };
+        mockArticle.childNodes.push(headerNode);
+        mockArticle.childNodes.push(headerNode.nextSibling);
+
+        showKaTeXErrorNotice(mockArticle);
+
+        assert.strictEqual(mockArticle.childNodes.length, 3);
+        assert.strictEqual(mockArticle.childNodes[0], headerNode);
+        assert.strictEqual(mockArticle.childNodes[1].className, 'katex-error-notice');
+        assert.strictEqual(mockArticle.childNodes[2], headerNode.nextSibling);
+    });
+
+    test('should insert notice after .post-header if it exists but has no nextSibling', () => {
+        const headerNode = { tagName: 'DIV', className: 'post-header', nextSibling: null };
+        mockArticle.childNodes.push(headerNode);
+
+        showKaTeXErrorNotice(mockArticle);
+
+        assert.strictEqual(mockArticle.childNodes.length, 2);
+        assert.strictEqual(mockArticle.childNodes[0].className, 'katex-error-notice');
+        assert.strictEqual(mockArticle.childNodes[1], headerNode);
+    });
+
+    test('should not insert multiple notices if one already exists', () => {
+        const existingNotice = { tagName: 'DIV', className: 'katex-error-notice' };
+        mockArticle.childNodes.push(existingNotice);
+
+        showKaTeXErrorNotice(mockArticle);
+
+        assert.strictEqual(mockArticle.childNodes.length, 1);
+        assert.strictEqual(mockArticle.childNodes[0], existingNotice);
+    });
+
+    test('should handle null/undefined article element safely', () => {
+        showKaTeXErrorNotice(null);
+        showKaTeXErrorNotice(undefined);
+    });
+
+    test('should construct the notice element with correct structure and attributes', () => {
+        showKaTeXErrorNotice(mockArticle);
+
+        const notice = mockArticle.childNodes[0];
+
+        assert.strictEqual(notice.tagName, 'DIV');
+        assert.strictEqual(notice.className, 'katex-error-notice');
+        assert.strictEqual(notice.attributes['role'], 'status');
+        assert.strictEqual(notice.attributes['aria-live'], 'polite');
+
+        assert.strictEqual(notice.childNodes.length, 1);
+        const p = notice.childNodes[0];
+        assert.strictEqual(p.tagName, 'P');
+
+        assert.strictEqual(p.childNodes.length, 2);
+        const strong = p.childNodes[0];
+        assert.strictEqual(strong.tagName, 'STRONG');
+        assert.strictEqual(strong.textContent, '提示：');
+
+        const textNode = p.childNodes[1];
+        assert.strictEqual(textNode.nodeType, 3);
+        assert.strictEqual(textNode.textContent, '數學公式元件載入失敗，頁面已保留原始 LaTeX 內容。');
     });
 });
