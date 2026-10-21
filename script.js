@@ -53,6 +53,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
+const SRI_HASHES = {
+    'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css': 'sha384-nB0miv6/jRmo5UMMR1wu3Gz6NLsoTkbqJghGIsx//Rlm+ZU03BU6SQNC66uf4l5+',
+    'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js': 'sha384-7zkQWkzuo3B5mTepMUcHkMB5jZaolc2xDwL6VFqjFALcbeS9Ggm/Yr2r3Dy4lfFg',
+    'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js': 'sha384-43gviWU0YVjaDtb/GhzOouOXtZMP/7XUzwPTstBeZFe/+rCMvRwr4yROQP43s0Xk'
+};
+
 const ignoredTags = new Set(['SCRIPT', 'NOSCRIPT', 'STYLE', 'TEXTAREA', 'PRE', 'CODE']);
 const blockTags = new Set([
     'ARTICLE', 'ASIDE', 'BLOCKQUOTE', 'CAPTION', 'DD', 'DETAILS', 'DIV', 'DL',
@@ -126,6 +132,9 @@ function loadStylesheet(href, timeoutMs = 8000) {
             link = document.createElement('link');
             link.rel = 'stylesheet';
             link.crossOrigin = 'anonymous';
+            if (SRI_HASHES[href]) {
+                link.integrity = SRI_HASHES[href];
+            }
         }
 
         let finished = false;
@@ -191,6 +200,9 @@ function loadScript(src, timeoutMs = 8000) {
             isNew = true;
             script = document.createElement('script');
             script.crossOrigin = 'anonymous';
+            if (SRI_HASHES[src]) {
+                script.integrity = SRI_HASHES[src];
+            }
         }
 
         let finished = false;
