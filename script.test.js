@@ -1,4 +1,4 @@
-const { test, describe } = require('node:test');
+const { test, describe, beforeEach } = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -12,7 +12,8 @@ const context = {
         querySelector: () => null,
         querySelectorAll: () => [],
         createElement: () => ({}),
-        body: { appendChild: () => {} }
+        body: { appendChild: () => {} },
+        getElementById: () => null // initial mock
     },
     window: {
         addEventListener: () => {},
@@ -30,6 +31,7 @@ vm.runInContext(scriptContent, context);
 
 const slugify = context.slugify;
 const getCleanHeadingText = context.getCleanHeadingText;
+const getElementByHash = context.getElementByHash;
 
 const createElement = (childNodes = [], classList = []) => ({
     nodeType: 1, // Node.ELEMENT_NODE
@@ -162,5 +164,54 @@ describe('getCleanHeadingText', () => {
             createTextNode('   Spaced Text   ')
         ]);
         assert.strictEqual(getCleanHeadingText(el), 'Spaced Text');
+    });
+});
+
+describe('getElementByHash', () => {
+    beforeEach(() => {
+        // Reset document.getElementById before each test
+        context.document.getElementById = () => null;
+    });
+
+    test('should return null for empty or non-string inputs', () => {
+        assert.strictEqual(getElementByHash(null), null);
+        assert.strictEqual(getElementByHash(undefined), null);
+        assert.strictEqual(getElementByHash(''), null);
+        assert.strictEqual(getElementByHash(123), null);
+        assert.strictEqual(getElementByHash({}), null);
+    });
+
+    test('should return null if hash is only "#"', () => {
+        assert.strictEqual(getElementByHash('#'), null);
+    });
+
+    test('should find element by normal id without hash prefix', () => {
+        const mockEl = { id: 'section-1' };
+        context.document.getElementById = (id) => id === 'section-1' ? mockEl : null;
+        assert.strictEqual(getElementByHash('section-1'), mockEl);
+    });
+
+    test('should find element by normal id with hash prefix', () => {
+        const mockEl = { id: 'section-1' };
+        context.document.getElementById = (id) => id === 'section-1' ? mockEl : null;
+        assert.strictEqual(getElementByHash('#section-1'), mockEl);
+    });
+
+    test('should handle url-encoded hash and find decoded id', () => {
+        const mockEl = { id: '測試' };
+        context.document.getElementById = (id) => id === '測試' ? mockEl : null;
+        assert.strictEqual(getElementByHash('#%E6%B8%AC%E8%A9%A6'), mockEl);
+    });
+
+    test('should fallback to raw id if decoded id is not found', () => {
+        const mockEl = { id: '%E6%B8%AC%E8%A9%A6' };
+        context.document.getElementById = (id) => id === '%E6%B8%AC%E8%A9%A6' ? mockEl : null;
+        assert.strictEqual(getElementByHash('#%E6%B8%AC%E8%A9%A6'), mockEl);
+    });
+
+    test('should handle malformed URI components gracefully', () => {
+        const mockEl = { id: '%E6%B8' };
+        context.document.getElementById = (id) => id === '%E6%B8' ? mockEl : null;
+        assert.strictEqual(getElementByHash('#%E6%B8'), mockEl);
     });
 });
