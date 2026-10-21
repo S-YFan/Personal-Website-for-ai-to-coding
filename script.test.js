@@ -7,11 +7,18 @@ const vm = require('node:vm');
 const scriptContent = fs.readFileSync('./script.js', 'utf8');
 
 const context = {
+    setTimeout: setTimeout,
+    clearTimeout: clearTimeout,
     document: {
+        head: { appendChild: () => {} },
         addEventListener: () => {},
         querySelector: () => null,
         querySelectorAll: () => [],
-        createElement: () => ({}),
+        createElement: () => ({
+            dataset: {},
+            addEventListener: () => {},
+            removeEventListener: () => {}
+        }),
         body: { appendChild: () => {} },
         getElementById: () => null // initial mock
     },
@@ -32,6 +39,7 @@ vm.runInContext(scriptContent, context);
 const slugify = context.slugify;
 const getCleanHeadingText = context.getCleanHeadingText;
 const getElementByHash = context.getElementByHash;
+const loadStylesheet = context.loadStylesheet;
 
 const createElement = (childNodes = [], classList = []) => ({
     nodeType: 1, // Node.ELEMENT_NODE
@@ -213,5 +221,85 @@ describe('getElementByHash', () => {
         const mockEl = { id: '%E6%B8' };
         context.document.getElementById = (id) => id === '%E6%B8' ? mockEl : null;
         assert.strictEqual(getElementByHash('#%E6%B8'), mockEl);
+    });
+});
+describe('loadStylesheet', () => {
+    let mockElement;
+
+    beforeEach(() => {
+        mockElement = {
+            dataset: {},
+            listeners: {},
+            addEventListener(event, handler) {
+                this.listeners[event] = handler;
+            },
+            removeEventListener(event, handler) {
+                if (this.listeners[event] === handler) {
+                    delete this.listeners[event];
+                }
+            }
+        };
+
+        context.document.querySelector = () => null;
+        context.document.createElement = () => mockElement;
+        context.document.head.appendChild = () => {};
+    });
+
+    test('should resolve immediately if stylesheet is already loaded', async () => {
+        context.document.querySelector = (selector) => {
+            if (selector === 'link[href="test.css"]') {
+                return { dataset: { loaded: 'true' } };
+            }
+            return null;
+        };
+        await assert.doesNotReject(loadStylesheet('test.css'));
+    });
+
+    test('should reject immediately if stylesheet previously failed', async () => {
+        context.document.querySelector = (selector) => {
+            if (selector === 'link[href="test.css"]') {
+                return { dataset: { failed: 'true' } };
+            }
+            return null;
+        };
+        await assert.rejects(
+            loadStylesheet('test.css'),
+            /Stylesheet previously failed to load: test.css/
+        );
+    });
+
+    test('should resolve when new stylesheet loads successfully', async () => {
+        const promise = loadStylesheet('test.css');
+
+        // Simulate load event
+        assert.ok(mockElement.listeners.load);
+        mockElement.listeners.load();
+
+        await promise;
+        assert.strictEqual(mockElement.dataset.loaded, 'true');
+    });
+
+    test('should reject when new stylesheet fails to load', async () => {
+        const promise = loadStylesheet('test.css');
+
+        // Simulate error event
+        assert.ok(mockElement.listeners.error);
+        mockElement.listeners.error();
+
+        await assert.rejects(
+            promise,
+            /Failed to load stylesheet: test.css/
+        );
+        assert.strictEqual(mockElement.dataset.failed, 'true');
+    });
+
+    test('should reject on timeout', async () => {
+        const promise = loadStylesheet('test.css', 10);
+
+        await assert.rejects(
+            promise,
+            /Timeout loading stylesheet: test.css/
+        );
+        assert.strictEqual(mockElement.dataset.failed, 'true');
     });
 });
