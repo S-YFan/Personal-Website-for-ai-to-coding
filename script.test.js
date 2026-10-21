@@ -19,7 +19,9 @@ const context = {
         addEventListener: () => {},
         matchMedia: () => ({ matches: false }),
         location: { hash: '' },
-        innerWidth: 1024
+        innerWidth: 1024,
+        pageYOffset: 0,
+        scrollTo: () => {}
     },
     NodeFilter: { SHOW_TEXT: 4 },
     Node: { TEXT_NODE: 3, ELEMENT_NODE: 1 },
@@ -32,6 +34,7 @@ vm.runInContext(scriptContent, context);
 const slugify = context.slugify;
 const getCleanHeadingText = context.getCleanHeadingText;
 const getElementByHash = context.getElementByHash;
+const scrollToElement = context.scrollToElement;
 
 const createElement = (childNodes = [], classList = []) => ({
     nodeType: 1, // Node.ELEMENT_NODE
@@ -213,5 +216,91 @@ describe('getElementByHash', () => {
         const mockEl = { id: '%E6%B8' };
         context.document.getElementById = (id) => id === '%E6%B8' ? mockEl : null;
         assert.strictEqual(getElementByHash('#%E6%B8'), mockEl);
+    });
+});
+describe('scrollToElement', () => {
+    let scrollToCalls = [];
+
+    beforeEach(() => {
+        scrollToCalls = [];
+        context.window.scrollTo = (options) => {
+            scrollToCalls.push(options);
+        };
+        context.window.pageYOffset = 0;
+        context.window.matchMedia = () => ({ matches: false });
+    });
+
+    test('should return early if targetElement is falsy', () => {
+        scrollToElement(null, null);
+        assert.strictEqual(scrollToCalls.length, 0);
+
+        scrollToElement(undefined, null);
+        assert.strictEqual(scrollToCalls.length, 0);
+    });
+
+    test('should calculate correct offset with a navbar', () => {
+        const targetElement = {
+            getBoundingClientRect: () => ({ top: 500 })
+        };
+        const navbar = { offsetHeight: 50 };
+        context.window.pageYOffset = 100;
+
+        scrollToElement(targetElement, navbar);
+
+        // elementPosition (500) + pageYOffset (100) - navbarHeight (50) - 10 = 540
+        assert.strictEqual(scrollToCalls.length, 1);
+        assert.strictEqual(scrollToCalls[0].top, 540);
+        assert.strictEqual(scrollToCalls[0].behavior, 'smooth');
+    });
+
+    test('should calculate correct offset without a navbar (uses default 70)', () => {
+        const targetElement = {
+            getBoundingClientRect: () => ({ top: 500 })
+        };
+        context.window.pageYOffset = 100;
+
+        scrollToElement(targetElement, null);
+
+        // elementPosition (500) + pageYOffset (100) - default navbarHeight (70) - 10 = 520
+        assert.strictEqual(scrollToCalls.length, 1);
+        assert.strictEqual(scrollToCalls[0].top, 520);
+        assert.strictEqual(scrollToCalls[0].behavior, 'smooth');
+    });
+
+    test('should use smooth behavior by default', () => {
+        const targetElement = {
+            getBoundingClientRect: () => ({ top: 100 })
+        };
+        scrollToElement(targetElement, null);
+
+        assert.strictEqual(scrollToCalls.length, 1);
+        assert.strictEqual(scrollToCalls[0].behavior, 'smooth');
+    });
+
+    test('should use auto behavior when isInstant is true', () => {
+        const targetElement = {
+            getBoundingClientRect: () => ({ top: 100 })
+        };
+        scrollToElement(targetElement, null, true);
+
+        assert.strictEqual(scrollToCalls.length, 1);
+        assert.strictEqual(scrollToCalls[0].behavior, 'auto');
+    });
+
+    test('should use auto behavior when prefers-reduced-motion matches', () => {
+        const targetElement = {
+            getBoundingClientRect: () => ({ top: 100 })
+        };
+        context.window.matchMedia = (query) => {
+            if (query === '(prefers-reduced-motion: reduce)') {
+                return { matches: true };
+            }
+            return { matches: false };
+        };
+
+        scrollToElement(targetElement, null);
+
+        assert.strictEqual(scrollToCalls.length, 1);
+        assert.strictEqual(scrollToCalls[0].behavior, 'auto');
     });
 });
