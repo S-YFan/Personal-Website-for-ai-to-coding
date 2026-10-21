@@ -562,12 +562,12 @@ function initScrollspy(articleElement, headings, tocContainer) {
     const tocLinks = Array.from(tocContainer.querySelectorAll('a[href^="#"]'));
 
     // Pre-calculate target mapping to reduce DOM queries inside the scroll observer
-    const linkTargets = tocLinks.map(link => {
+    const linkTargetsMap = new Map();
+    tocLinks.forEach(link => {
         const target = getElementByHash(link.getAttribute('href'));
-        return {
-            link: link,
-            targetId: target ? target.id : null
-        };
+        if (target && target.id) {
+            linkTargetsMap.set(target.id, link);
+        }
     });
 
     if ('IntersectionObserver' in window) {
@@ -576,19 +576,23 @@ function initScrollspy(articleElement, headings, tocContainer) {
             threshold: 0
         };
 
+        let currentActiveLink = null;
+
         function handleHeadingIntersection(entries) {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     const id = entry.target.id;
-                    linkTargets.forEach(item => {
-                        if (item.targetId === id) {
-                            item.link.classList.add('active');
-                            item.link.setAttribute('aria-current', 'true');
-                        } else {
-                            item.link.classList.remove('active');
-                            item.link.removeAttribute('aria-current');
+                    const targetLink = linkTargetsMap.get(id);
+
+                    if (targetLink && targetLink !== currentActiveLink) {
+                        if (currentActiveLink) {
+                            currentActiveLink.classList.remove('active');
+                            currentActiveLink.removeAttribute('aria-current');
                         }
-                    });
+                        targetLink.classList.add('active');
+                        targetLink.setAttribute('aria-current', 'true');
+                        currentActiveLink = targetLink;
+                    }
                 }
             });
         }
