@@ -13,7 +13,32 @@ const context = {
         querySelectorAll: () => [],
         createElement: () => ({}),
         body: { appendChild: () => {} },
-        getElementById: () => null // initial mock
+        getElementById: () => null, // initial mock
+        createTreeWalker: (root, whatToShow, filter) => {
+            const nodes = [];
+            const traverse = (node) => {
+                if (node.nodeType === 3) {
+                    const result = filter && filter.acceptNode ? filter.acceptNode(node) : 1;
+                    if (result === 1) { // NodeFilter.FILTER_ACCEPT
+                        nodes.push(node);
+                    }
+                }
+                if (node.childNodes) {
+                    for (const child of node.childNodes) {
+                        traverse(child);
+                    }
+                }
+            };
+            traverse(root);
+
+            let index = -1;
+            return {
+                nextNode: () => {
+                    index++;
+                    return index < nodes.length ? nodes[index] : null;
+                }
+            };
+        }
     },
     window: {
         addEventListener: () => {},
@@ -21,7 +46,7 @@ const context = {
         location: { hash: '' },
         innerWidth: 1024
     },
-    NodeFilter: { SHOW_TEXT: 4 },
+    NodeFilter: { SHOW_TEXT: 4, FILTER_ACCEPT: 1, FILTER_REJECT: 2 },
     Node: { TEXT_NODE: 3, ELEMENT_NODE: 1 },
     console: console,
 };
@@ -32,18 +57,44 @@ vm.runInContext(scriptContent, context);
 const slugify = context.slugify;
 const getCleanHeadingText = context.getCleanHeadingText;
 const getElementByHash = context.getElementByHash;
+const hasMathContent = context.hasMathContent;
 
-const createElement = (childNodes = [], classList = []) => ({
-    nodeType: 1, // Node.ELEMENT_NODE
-    childNodes,
-    classList: {
-        contains: (className) => classList.includes(className)
+const createElement = (tagNameOrChildNodes, childNodesOrClassList, classListOrUndef) => {
+    let tagName = 'DIV';
+    let children = [];
+    let classes = [];
+
+    if (typeof tagNameOrChildNodes === 'string') {
+        tagName = tagNameOrChildNodes;
+        children = childNodesOrClassList || [];
+        classes = classListOrUndef || [];
+    } else {
+        children = tagNameOrChildNodes || [];
+        classes = childNodesOrClassList || [];
     }
-});
+
+    const el = {
+        nodeType: 1, // Node.ELEMENT_NODE
+        tagName: tagName.toUpperCase(),
+        childNodes: children,
+        classList: {
+            contains: (className) => classes.includes(className)
+        },
+        parentElement: null
+    };
+
+    for (const child of children) {
+        child.parentElement = el;
+    }
+
+    return el;
+};
 
 const createTextNode = (textContent) => ({
     nodeType: 3, // Node.TEXT_NODE
-    textContent
+    textContent,
+    nodeValue: textContent,
+    parentElement: null
 });
 
 describe('slugify', () => {
@@ -213,5 +264,84 @@ describe('getElementByHash', () => {
         const mockEl = { id: '%E6%B8' };
         context.document.getElementById = (id) => id === '%E6%B8' ? mockEl : null;
         assert.strictEqual(getElementByHash('#%E6%B8'), mockEl);
+    });
+});
+describe('hasMathContent', () => {
+    test('should return false for null or undefined', () => {
+        assert.strictEqual(hasMathContent(null), false);
+        assert.strictEqual(hasMathContent(undefined), false);
+    });
+
+    test('should return false when there is no math', () => {
+        const el = createElement('ARTICLE', [
+            createElement('P', [
+                createTextNode('This is just normal text.')
+            ])
+        ]);
+        assert.strictEqual(hasMathContent(el), false);
+    });
+
+    test('should return true for inline math', () => {
+        const el = createElement('ARTICLE', [
+            createElement('P', [
+                createTextNode('This is inline math: \\( x = 1 \\)')
+            ])
+        ]);
+        assert.strictEqual(hasMathContent(el), true);
+    });
+
+    test('should return true for display math (bracket)', () => {
+        const el = createElement('ARTICLE', [
+            createElement('DIV', [
+                createTextNode('\\[ y = x^2 \\]')
+            ])
+        ]);
+        assert.strictEqual(hasMathContent(el), true);
+    });
+
+    test('should return true for display math (dollar)', () => {
+        const el = createElement('ARTICLE', [
+            createElement('DIV', [
+                createTextNode('$$ z = x + y $$')
+            ])
+        ]);
+        assert.strictEqual(hasMathContent(el), true);
+    });
+
+    test('should return true for math across inline elements sharing a block parent', () => {
+        const el = createElement('ARTICLE', [
+            createElement('P', [
+                createTextNode('\\('),
+                createElement('SPAN', [
+                    createTextNode(' x = 1 ')
+                ]),
+                createTextNode('\\)')
+            ])
+        ]);
+        assert.strictEqual(hasMathContent(el), true);
+    });
+
+    test('should return false for math split across block boundaries', () => {
+        const el = createElement('ARTICLE', [
+            createElement('DIV', [
+                createTextNode('\\( x = 1')
+            ]),
+            createElement('DIV', [
+                createTextNode('y = 2 \\)')
+            ])
+        ]);
+        assert.strictEqual(hasMathContent(el), false);
+    });
+
+    test('should return false for math inside ignored tags', () => {
+        const el = createElement('ARTICLE', [
+            createElement('PRE', [
+                createTextNode('\\( x = 1 \\)')
+            ]),
+            createElement('CODE', [
+                createTextNode('\\[ y = x^2 \\]')
+            ])
+        ]);
+        assert.strictEqual(hasMathContent(el), false);
     });
 });
