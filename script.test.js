@@ -11,7 +11,8 @@ const context = {
         addEventListener: () => {},
         querySelector: () => null,
         querySelectorAll: () => [],
-        createElement: () => ({}),
+        createElement: (tagName) => createElement([], [], tagName.toUpperCase()),
+        createDocumentFragment: () => ({ childNodes: [], appendChild(node) { this.childNodes.push(node); } }),
         body: { appendChild: () => {} },
         getElementById: () => null // initial mock
     },
@@ -32,18 +33,26 @@ vm.runInContext(scriptContent, context);
 const slugify = context.slugify;
 const getCleanHeadingText = context.getCleanHeadingText;
 const getElementByHash = context.getElementByHash;
+const createTocLabel = context.createTocLabel;
 
-const createElement = (childNodes = [], classList = []) => ({
+const createElement = (childNodes = [], classList = [], tagName = 'DIV') => ({
     nodeType: 1, // Node.ELEMENT_NODE
+    tagName,
     childNodes,
     classList: {
         contains: (className) => classList.includes(className)
+    },
+    appendChild(node) {
+        this.childNodes.push(node);
     }
 });
 
 const createTextNode = (textContent) => ({
     nodeType: 3, // Node.TEXT_NODE
-    textContent
+    textContent,
+    cloneNode(deep) {
+        return createTextNode(this.textContent);
+    }
 });
 
 describe('slugify', () => {
@@ -213,5 +222,84 @@ describe('getElementByHash', () => {
         const mockEl = { id: '%E6%B8' };
         context.document.getElementById = (id) => id === '%E6%B8' ? mockEl : null;
         assert.strictEqual(getElementByHash('#%E6%B8'), mockEl);
+    });
+});
+describe('createTocLabel', () => {
+    test('should return a document fragment containing cloned text nodes', () => {
+        const heading = createElement([
+            createTextNode('Hello World')
+        ], [], 'H2');
+        const fragment = createTocLabel(heading);
+        assert.strictEqual(fragment.childNodes.length, 1);
+        assert.strictEqual(fragment.childNodes[0].nodeType, 3); // TEXT_NODE
+        assert.strictEqual(fragment.childNodes[0].textContent, 'Hello World');
+    });
+
+    test('should preserve allowed formatting tags', () => {
+        const heading = createElement([
+            createElement([createTextNode('Important')], [], 'STRONG')
+        ], [], 'H2');
+        const fragment = createTocLabel(heading);
+        assert.strictEqual(fragment.childNodes.length, 1);
+        assert.strictEqual(fragment.childNodes[0].nodeType, 1); // ELEMENT_NODE
+        assert.strictEqual(fragment.childNodes[0].tagName, 'STRONG');
+        assert.strictEqual(fragment.childNodes[0].childNodes[0].textContent, 'Important');
+    });
+
+    test('should unwrap unlisted tags (like A) into span without copying attributes', () => {
+        const heading = createElement([
+            createElement([createTextNode('Link Text')], [], 'A')
+        ], [], 'H2');
+        const fragment = createTocLabel(heading);
+        assert.strictEqual(fragment.childNodes.length, 1);
+        assert.strictEqual(fragment.childNodes[0].nodeType, 1);
+        assert.strictEqual(fragment.childNodes[0].tagName, 'SPAN');
+        assert.strictEqual(fragment.childNodes[0].childNodes[0].textContent, 'Link Text');
+    });
+
+    test('should exclude elements with excluded classes', () => {
+        const heading = createElement([
+            createTextNode('Title '),
+            createElement([createTextNode('#')], ['heading-anchor'], 'A'),
+            createElement([createTextNode('E=mc^2')], ['katex-mathml'], 'SPAN')
+        ], [], 'H2');
+        const fragment = createTocLabel(heading);
+        assert.strictEqual(fragment.childNodes.length, 1);
+        assert.strictEqual(fragment.childNodes[0].textContent, 'Title ');
+    });
+
+    test('should exclude elements with excluded tags', () => {
+        const heading = createElement([
+            createTextNode('Title '),
+            createElement([createTextNode('click me')], [], 'BUTTON'),
+            createElement([createTextNode('console.log("x");')], [], 'SCRIPT')
+        ], [], 'H2');
+        const fragment = createTocLabel(heading);
+        assert.strictEqual(fragment.childNodes.length, 1);
+        assert.strictEqual(fragment.childNodes[0].textContent, 'Title ');
+    });
+
+    test('should handle mixed nested structures correctly', () => {
+        const heading = createElement([
+            createTextNode('A '),
+            createElement([
+                createTextNode('bold '),
+                createElement([createTextNode('link')], [], 'A')
+            ], [], 'STRONG'),
+            createTextNode(' with '),
+            createElement([createTextNode('button')], [], 'BUTTON')
+        ], [], 'H2');
+        const fragment = createTocLabel(heading);
+        assert.strictEqual(fragment.childNodes.length, 3);
+        assert.strictEqual(fragment.childNodes[0].textContent, 'A ');
+
+        const strong = fragment.childNodes[1];
+        assert.strictEqual(strong.tagName, 'STRONG');
+        assert.strictEqual(strong.childNodes.length, 2);
+        assert.strictEqual(strong.childNodes[0].textContent, 'bold ');
+        assert.strictEqual(strong.childNodes[1].tagName, 'SPAN');
+        assert.strictEqual(strong.childNodes[1].childNodes[0].textContent, 'link');
+
+        assert.strictEqual(fragment.childNodes[2].textContent, ' with ');
     });
 });
