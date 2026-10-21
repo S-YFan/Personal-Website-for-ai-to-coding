@@ -22,6 +22,7 @@ const context = {
         innerWidth: 1024
     },
     NodeFilter: { SHOW_TEXT: 4 },
+    Node: { TEXT_NODE: 3, ELEMENT_NODE: 1 },
     console: console,
 };
 
@@ -29,11 +30,25 @@ vm.createContext(context);
 vm.runInContext(scriptContent, context);
 
 const slugify = context.slugify;
+const getCleanHeadingText = context.getCleanHeadingText;
+
+const createElement = (childNodes = [], classList = []) => ({
+    nodeType: 1, // Node.ELEMENT_NODE
+    childNodes,
+    classList: {
+        contains: (className) => classList.includes(className)
+    }
+});
+
+const createTextNode = (textContent) => ({
+    nodeType: 3, // Node.TEXT_NODE
+    textContent
+});
 
 describe('slugify', () => {
     test('should lowercase strings', () => {
         assert.strictEqual(slugify('HELLO'), 'hello');
-        assert.strictEqual(slugify('Hello World'), 'hello-world');
+        assert.strictEqual(slugify('Mixed CASE'), 'mixed-case');
     });
 
     test('should replace spaces and underscores with hyphens', () => {
@@ -73,6 +88,7 @@ describe('slugify', () => {
         assert.strictEqual(slugify('12345'), '12345');
     });
 });
+
 
 const getElementByHash = context.getElementByHash;
 
@@ -122,5 +138,6 @@ describe('getElementByHash', () => {
         const mockEl = { id: '%E6%B8' };
         context.document.getElementById = (id) => id === '%E6%B8' ? mockEl : null;
         assert.strictEqual(getElementByHash('#%E6%B8'), mockEl);
+
     });
 });
