@@ -64,34 +64,31 @@ const blockTags = new Set([
 function hasMathContent(articleElement) {
     if (!articleElement) return false;
 
-    const walker = document.createTreeWalker(articleElement, NodeFilter.SHOW_TEXT, {
-        acceptNode(node) {
-            if (!node.nodeValue) return NodeFilter.FILTER_REJECT;
-            let parent = node.parentElement;
-            while (parent && parent !== articleElement) {
-                if (ignoredTags.has(parent.tagName.toUpperCase())) {
-                    return NodeFilter.FILTER_REJECT;
-                }
-                parent = parent.parentElement;
-            }
-            return NodeFilter.FILTER_ACCEPT;
-        }
-    });
+    const walker = document.createTreeWalker(articleElement, NodeFilter.SHOW_TEXT, null);
 
     const blockMap = new Map();
     let node;
 
     while ((node = walker.nextNode())) {
+        if (!node.nodeValue) continue;
+
         let parent = node.parentElement;
         let blockContainer = articleElement;
+        let isIgnored = false;
 
         while (parent && parent !== articleElement) {
-            if (blockTags.has(parent.tagName.toUpperCase())) {
-                blockContainer = parent;
+            const tagName = parent.tagName.toUpperCase();
+            if (ignoredTags.has(tagName)) {
+                isIgnored = true;
                 break;
+            }
+            if (blockContainer === articleElement && blockTags.has(tagName)) {
+                blockContainer = parent;
             }
             parent = parent.parentElement;
         }
+
+        if (isIgnored) continue;
 
         if (!blockMap.has(blockContainer)) {
             blockMap.set(blockContainer, '');
