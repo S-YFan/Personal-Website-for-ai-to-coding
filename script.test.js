@@ -354,6 +354,62 @@ describe('hasMathContent', () => {
         ]);
         assert.strictEqual(hasMathContent(el), false);
     });
+
+    test('should inspect each ancestor only once per non-ignored text node', () => {
+        // Cover both a nearest block ancestor and the article fallback.
+        for (const tags of [['SECTION', 'P', 'SPAN'], ['SPAN', 'EM', 'STRONG']]) {
+            const tagReads = new Map();
+            let child = createTextNode('Ordinary text');
+            for (const tag of tags.slice().reverse()) {
+                const element = createElement(tag, [child]);
+                tagReads.set(element, 0);
+                Object.defineProperty(element, 'tagName', {
+                    get() {
+                        tagReads.set(element, tagReads.get(element) + 1);
+                        return tag;
+                    }
+                });
+                child = element;
+            }
+            const el = createElement('ARTICLE', [child]);
+
+            assert.strictEqual(hasMathContent(el), false);
+            for (const reads of tagReads.values()) {
+                assert.strictEqual(reads, 1, 'an ancestor must not be scanned again for block tags');
+            }
+        }
+    });
+
+    test('should keep checking ignored ancestors above the nearest block', () => {
+        const el = createElement('ARTICLE', [
+            createElement('PRE', [
+                createElement('DIV', [
+                    createElement('SPAN', [createTextNode('\\( x = 1 \\)')])
+                ])
+            ])
+        ]);
+        assert.strictEqual(hasMathContent(el), false);
+    });
+
+    test('should group text by the nearest nested block', () => {
+        const el = createElement('ARTICLE', [
+            createElement('SECTION', [
+                createElement('P', [createTextNode('\\( x = 1')]),
+                createElement('P', [createTextNode('y = 2 \\)')])
+            ])
+        ]);
+        assert.strictEqual(hasMathContent(el), false);
+    });
+
+    test('should group inline text at the article root without checking outside it', () => {
+        const el = createElement('ARTICLE', [
+            createElement('SPAN', [createTextNode('\\(')]),
+            createElement('EM', [createTextNode(' x = 1 ')]),
+            createTextNode('\\)')
+        ]);
+        createElement('PRE', [el]);
+        assert.strictEqual(hasMathContent(el), true);
+    });
 });
 
 describe('showKaTeXErrorNotice', () => {
